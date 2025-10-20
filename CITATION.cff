@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "AutoPBR: Automatic PBR Material Assignment from Street Imagery"
+version: 1.0.0
+date-released: 2025-01-01
+authors:
+  - family-names: "Researcher"
+    given-names: "AutoPBR"
+repository-code: "https://github.com/yourusername/autopbr"
+keywords:
+  - "computer vision"
+  - "pbr materials"
+  - "street imagery"
+  - "3d reconstruction"
+  - "building materials"
+  - "deep learning"
+license: MIT

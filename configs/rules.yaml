@@ -1,0 +1,45 @@
+# Fallback rules for unknown materials
+# Applied when CLIP classification returns 'unknown' or low confidence
+
+window:
+  unknown: glass
+  priority:
+    - glass
+    - metal
+    - wood
+  confidence_boost: 0.1  # Add to confidence when applying rule
+
+door:
+  unknown: wood
+  priority:
+    - wood
+    - metal
+    - glass
+  confidence_boost: 0.1
+
+wall:
+  unknown: plaster
+  priority:
+    - wood      # For historic buildings like Bryggen
+    - brick
+    - plaster
+    - concrete
+    - stone
+  confidence_boost: 0.05
+
+# Context-specific rules (can be enabled based on building type or region)
+context_rules:
+  historic:
+    wall: wood
+    window: glass
+    door: wood
+  
+  modern:
+    wall: concrete
+    window: glass
+    door: metal
+  
+  residential:
+    wall: plaster
+    window: glass
+    door: wood

@@ -1,0 +1,234 @@
+assolutamente sì — riassumo tutto in una **checklist riproducibile** (dalla foto Mapillary/.jpg fino all’assegnazione PBR in Unreal), con file in/out e comandi. Tienila come “ricetta” da dare al tutor.
+
+---
+
+# 🧭 AutopBR – pipeline minima riproducibile
+
+## 0) Setup (una volta sola)
+
+- **Python venv** e pacchetti:
+    
+    ```bash
+    python -m venv .venv
+    .venv\Scripts\activate
+    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+    pip install opencv-python pillow numpy pandas tqdm shapely geopandas pyproj rtree pyyaml requests open-clip-torch
+    pip install transformers timm  # (per SegFormer & OWL-ViT)
+    
+    ```
+    
+- **Struttura cartelle**
+    
+    ```
+    bryggen_autopbr/
+      photos/                       # .jpg scaricate (Mapillary o tue)
+      parts/                        # uscite segmentazione parts (png RGBA)
+      outputs/                      # csv finali
+      configs/, checkpoints/        # config e pesi pretrain
+      *.py                          # script
+    
+    ```
+    
+
+---
+
+## 1) (Facoltativo) OSM → buildings.geojson
+
+Se hai già `buildings.geojson`, salta.
+
+```bash
+python build_buildings_geojson.py --osm map_53.osm --out buildings.geojson
+
+```
+
+**Out:** `buildings.geojson` (poligoni edificio con `building_id`).
+
+---
+
+## 2) (Facoltativo) Associa foto ↔ edificio
+
+Se vuoi aggregare per edificio (consigliato):
+
+```bash
+python assign_images_to_buildings.py --geo buildings.geojson --photos_manifest photos_manifest.csv --out image_to_building.csv
+
+```
+
+- `photos_manifest.csv`: lat/lon/heading per ogni foto (da Mapillary o tuo manifest).
+    
+    **Out:** `image_to_building.csv` (mappa `image_id → building_id`).
+    
+
+---
+
+## 3) Segmentazione parti con **SegFormer ADE20K**
+
+Estrai *facciata* (`wall_derived`), *door* e *qualche window*.
+
+```bash
+python seg_parts_hf.py --photos photos --outdir parts --device cpu ^
+  --window_min 0.001 --door_min 0.002
+
+```
+
+- Il modello identifica `building/door/window`. Noi costruiamo **facciata** = `building − (window ∪ door ∪ roof)`.
+    
+    **Out:**
+    
+- `parts/<image>_wall.png` (PNG RGBA)
+- `parts/<image>_door.png` (se presente)
+- `parts/<image>_window.png` (a volte)
+- `parts/parts_index.csv` (catalogo: `image_id,part,path,area_ratio`)
+
+> Se le window sono poche: è normale (ADE20K tende a inglobarle nel “building”).
+> 
+
+---
+
+## 4) Booster finestre **OWL-ViT** (open-vocabulary detection)
+
+Trova box “window” → converte in PNG RGBA e **aggiorna** l’indice.
+
+```bash
+python boost_windows_owlvit.py --photos photos --outdir parts --parts_index parts\parts_index.csv ^
+  --device cuda --max_side 1024 --score_thr 0.25 --iou_wall_thr 0.5 --nms_thr 0.5 --skip_if_has_windows
+
+```
+
+- Usa come ROI `parts/<image>_wall.png` per cercare **solo sulle facciate**.
+    
+    **Out:** nuovi `*_window_det_*.png` + righe `window` su `parts_index.csv`.
+    
+
+*(Se non hai GPU, usa `--device cpu` e riduci `--max_side` a 768.)*
+
+---
+
+## 5) Classificazione **materiale PBR** su ogni parte (zero-shot CLIP)
+
+Applichiamo CLIP ai crop RGBA (wall/door/window) → etichette materiali (“wood/brick/plaster/glass/metal/…”) con confidenza.
+
+```bash
+python clip_on_parts.py --parts_index parts\parts_index.csv --out mat_preds_parts.csv --device cpu
+
+```
+
+- Prompt set già incluso (“a wooden wall”, “a glass window”, …) + astensione (`unknown`) se bassa confidenza/margine.
+    
+    **Out:** `mat_preds_parts.csv` (per riga: `image_id, part, label, conf, margin, path`).
+    
+
+> Upgrade facile quando vuoi: probe supervisionato (MatSynth+MCubeS) per sostituire i prompt zero-shot con un logistic-regression plug-in.
+> 
+
+---
+
+## 6) Aggregazione a **livello edificio**
+
+Unisce più viste della stessa parte (e.g., più `window` dello stesso edificio) con pesi su confidenza e distanza camera→edificio.
+
+```bash
+python aggregate_parts.py --preds mat_preds_parts.csv --links image_to_building.csv --out outputs\materials_by_building.csv
+
+```
+
+**Out:** `materials_by_building.csv`
+
+Colonne tipiche:
+
+```
+building_id, wall_material, wall_conf, window_material, window_conf, door_material, door_conf, n_votes_wall, ...
+
+```
+
+*(Se non usi il passo 2, l’aggregazione resta per-foto, non per-edificio.)*
+
+---
+
+## 7) Fallback rules (copri i buchi)
+
+Per parti rimaste `unknown`:
+
+- `window → glass`
+- `door → wood/metal` con prior pesati
+- `wall` Bryggen → `wood` prior, altrimenti `plaster/brick` mischiati
+
+```bash
+python rule_backfill.py --in outputs\materials_by_building.csv --out outputs\materials_final.csv --rules configs\rules.yaml
+
+```
+
+**Out:** `materials_final.csv` (stessa tabella ma senza `unknown`, con colonna `source=clip|rule`).
+
+---
+
+## 8) Export per **Unreal** (tabella assegnazioni PBR)
+
+CSV semplice che Unreal/Blueprint legge per applicare Material Instance agli attori con tag `building_id`.
+
+```bash
+python export_unreal_table.py --in outputs\materials_final.csv --out outputs\autopbr_assignments.csv
+
+```
+
+**Out:** `autopbr_assignments.csv`
+
+(es. `building_id,wall=MI_Wood_01,window=MI_Glass_Clear,door=MI_Wood_Dark`)
+
+---
+
+## 9) **Unreal**: applica i materiali (Editor Utility Python/Blueprint)
+
+In UE (progetto già con le Material Instance):
+
+- Esegui `unreal_assign_autopbr.py` (o l’Editor Utility Blueprint equivalente).
+- Logica: per ogni riga CSV → cerca Actor con tag `building_id` → setta materiale per slot `Wall`, `Window`, `Door`.
+
+*(Se usi un `.glb` unico, puoi assegnare per **material slot name** o per **ID prim** se importato come USD.)*
+
+---
+
+## 10) (Facoltativo) Export per **UR-MAT** / simulazioni
+
+Mappa le classi PBR a proprietà fisiche (εr, attenuazione, ecc.) per il tuo training/simulatore.
+
+```bash
+python export_urmat_metadata.py --in outputs\materials_final.csv --out outputs\urmat_materials.json
+
+```
+
+**Out:** `urmat_materials.json` (lista `building_id → {part, material, conf, em_params}`).
+
+---
+
+# ✅ Cosa controllare (sanity checks veloci)
+
+- `parts/parts_index.csv` ha righe per **wall** quasi in ogni immagine, **window** almeno in molte (grazie al booster).
+- `mat_preds_parts.csv`: poche righe con `unknown`, **glass** domina su `window`, **wood/plaster/brick** sulle **wall**.
+- `materials_by_building.csv`: per ogni edificio coperto da foto, c’è almeno `wall_material`.
+- In Unreal, un edificio di test **cambia** look con legno/vetro coerenti.
+
+---
+
+# 🔧 Dove si rompe più spesso (e fix)
+
+- **Finestre mancanti** → lancia `boost_windows_owlvit.py` e abbassa `-score_thr` (0.20–0.25), oppure alza `-iou_wall_thr` per togliere falsi positivi.
+- **Tetti non segmentati** → OSM `roof:material` se disponibile, o heuristica: “banda superiore del building” (posso aggiungerla nello script).
+- **Materiali confusi (plaster vs stone)** → attiva **probe supervisionato** (MatSynth+MCubeS) al posto del puro zero-shot.
+- **Unreal non assegna** → controlla che gli Actor abbiano il **Tag** `building_id` uguale al CSV; controlla i **material slot names**.
+
+---
+
+# 🧱 Artefatti prodotti (per la submission/replicabilità)
+
+- `buildings.geojson` (o OSM originale).
+- `parts/` + `parts/parts_index.csv` (crop RGBA e indice).
+- `mat_preds_parts.csv` (predizioni per parte).
+- `image_to_building.csv` (link foto→edificio).
+- `outputs/materials_by_building.csv` → `outputs/materials_final.csv`.
+- `outputs/autopbr_assignments.csv` (Unreal).
+- `outputs/urmat_materials.json` (UR-MAT).
+
+---
+
+Se vuoi, ti compatto tutti gli step 3→7 in **un unico script `autopbr_run_all.py`** che legge una `autopbr_config.yaml` e lancia in sequenza: segmentazione → booster → CLIP → aggregazione → fallback → export. Dimmi e te lo preparo subito con i parametri che stai usando ora.
