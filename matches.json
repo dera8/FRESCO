@@ -1,0 +1,2601 @@
+{
+  "225959814": {
+    "photo_path": "data_input/photos\\2896464814002587.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "parking"
+    }
+  },
+  "267389644": {
+    "photo_path": "data_input/photos\\371932527564144.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "hotel",
+      "building:levels": "11",
+      "building:colour": "#a1caf1"
+    }
+  },
+  "292242381": {
+    "photo_path": "data_input/photos\\1384672201931953.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "2",
+      "building:colour": "red",
+      "roof:colour": "black"
+    }
+  },
+  "292242383": {
+    "photo_path": "data_input/photos\\197353772213005.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "1",
+      "building:colour": "aqua",
+      "roof:colour": "brown"
+    }
+  },
+  "292242384": {
+    "photo_path": "data_input/photos\\928063437770362.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "2",
+      "building:colour": "orange",
+      "roof:colour": "black"
+    }
+  },
+  "292242388": {
+    "photo_path": "data_input/photos\\1384672201931953.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "2",
+      "building:colour": "red",
+      "roof:colour": "black"
+    }
+  },
+  "292320260": {
+    "photo_path": "data_input/photos\\475267077143329.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "3",
+      "building:colour": "white"
+    }
+  },
+  "292320261": {
+    "photo_path": "data_input/photos\\1031718888955823.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "3",
+      "building:colour": "white"
+    }
+  },
+  "292320263": {
+    "photo_path": "data_input/photos\\146510880824007.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320264": {
+    "photo_path": "data_input/photos\\484704736065181.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320265": {
+    "photo_path": "data_input/photos\\2930905820562294.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320266": {
+    "photo_path": "data_input/photos\\259658019182028.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "3",
+      "building:colour": "red",
+      "roof:colour": "brown"
+    }
+  },
+  "292320267": {
+    "photo_path": "data_input/photos\\2969780880011089.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320268": {
+    "photo_path": "data_input/photos\\259658019182028.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "red",
+      "roof:colour": "black"
+    }
+  },
+  "292320269": {
+    "photo_path": "data_input/photos\\472145877538592.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "2",
+      "building:colour": "orange",
+      "roof:colour": "brown"
+    }
+  },
+  "292320271": {
+    "photo_path": "data_input/photos\\838907483421567.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320272": {
+    "photo_path": "data_input/photos\\803182156990703.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320273": {
+    "photo_path": "data_input/photos\\309596670608550.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "292320274": {
+    "photo_path": "data_input/photos\\378658190132787.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse",
+      "building:levels": "2",
+      "building:colour": "orange",
+      "roof:colour": "brown"
+    }
+  },
+  "292320275": {
+    "photo_path": "data_input/photos\\311828366993805.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "red",
+      "roof:colour": "orange"
+    }
+  },
+  "292320276": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "2",
+      "building:colour": "red",
+      "roof:colour": "brown"
+    }
+  },
+  "292320278": {
+    "photo_path": "data_input/photos\\210833693989762.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "307454507": {
+    "photo_path": "data_input/photos\\220266236712129.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3"
+    }
+  },
+  "331274524": {
+    "photo_path": "data_input/photos\\154918113254412.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274526": {
+    "photo_path": "data_input/photos\\838907483421567.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274527": {
+    "photo_path": "data_input/photos\\311568713925316.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "5",
+      "building:material": "brick",
+      "building:colour": "mahogany",
+      "roof:material": "slate"
+    }
+  },
+  "331274528": {
+    "photo_path": "data_input/photos\\872665960014246.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274529": {
+    "photo_path": "data_input/photos\\525945338777632.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "hotel"
+    }
+  },
+  "331274530": {
+    "photo_path": "data_input/photos\\154918113254412.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274532": {
+    "photo_path": "data_input/photos\\163286292313223.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274533": {
+    "photo_path": "data_input/photos\\306399454479173.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic"
+    }
+  },
+  "331274535": {
+    "photo_path": "data_input/photos\\131791275636492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274536": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274539": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274540": {
+    "photo_path": "data_input/photos\\392733725044420.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274541": {
+    "photo_path": "data_input/photos\\2658420214458364.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "3",
+      "building:colour": "brown"
+    }
+  },
+  "331274542": {
+    "photo_path": "data_input/photos\\803579027255440.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274543": {
+    "photo_path": "data_input/photos\\2896464814002587.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274545": {
+    "photo_path": "data_input/photos\\1097751674079016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic",
+      "building:levels": "1"
+    }
+  },
+  "331274546": {
+    "photo_path": "data_input/photos\\139045748204666.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274547": {
+    "photo_path": "data_input/photos\\841482200059607.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274548": {
+    "photo_path": "data_input/photos\\803182156990703.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274551": {
+    "photo_path": "data_input/photos\\2896464814002587.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274552": {
+    "photo_path": "data_input/photos\\513674563161923.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274555": {
+    "photo_path": "data_input/photos\\872665960014246.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274556": {
+    "photo_path": "data_input/photos\\493165878598583.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274558": {
+    "photo_path": "data_input/photos\\501048007911175.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic"
+    }
+  },
+  "331274559": {
+    "photo_path": "data_input/photos\\841482200059607.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274560": {
+    "photo_path": "data_input/photos\\475267077143329.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "red"
+    }
+  },
+  "331274561": {
+    "photo_path": "data_input/photos\\3007481752814889.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic"
+    }
+  },
+  "331274562": {
+    "photo_path": "data_input/photos\\175876771064576.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274563": {
+    "photo_path": "data_input/photos\\872665960014246.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274566": {
+    "photo_path": "data_input/photos\\166208928771549.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274567": {
+    "photo_path": "data_input/photos\\193515779279090.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "brown"
+    }
+  },
+  "331274569": {
+    "photo_path": "data_input/photos\\501609591204227.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274570": {
+    "photo_path": "data_input/photos\\865494160977309.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274572": {
+    "photo_path": "data_input/photos\\611489629810318.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274573": {
+    "photo_path": "data_input/photos\\139045748204666.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274574": {
+    "photo_path": "data_input/photos\\478788026696043.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "beige"
+    }
+  },
+  "331274575": {
+    "photo_path": "data_input/photos\\139045748204666.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274577": {
+    "photo_path": "data_input/photos\\310216770560169.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274578": {
+    "photo_path": "data_input/photos\\2934439943435799.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "beige"
+    }
+  },
+  "331274579": {
+    "photo_path": "data_input/photos\\501048007911175.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274580": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "331274581": {
+    "photo_path": "data_input/photos\\310216770560169.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274582": {
+    "photo_path": "data_input/photos\\963605727782490.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3",
+      "building:colour": "beige"
+    }
+  },
+  "331274583": {
+    "photo_path": "data_input/photos\\496759068335909.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274586": {
+    "photo_path": "data_input/photos\\941583653326122.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274587": {
+    "photo_path": "data_input/photos\\259658019182028.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "3",
+      "building:colour": "red",
+      "roof:colour": "brown"
+    }
+  },
+  "331274589": {
+    "photo_path": "data_input/photos\\501048007911175.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic"
+    }
+  },
+  "331274590": {
+    "photo_path": "data_input/photos\\154918113254412.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274591": {
+    "photo_path": "data_input/photos\\768108463905857.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274594": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274596": {
+    "photo_path": "data_input/photos\\803579027255440.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274597": {
+    "photo_path": "data_input/photos\\9198658116889675.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office"
+    }
+  },
+  "331274598": {
+    "photo_path": "data_input/photos\\154918113254412.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274599": {
+    "photo_path": "data_input/photos\\232781571963016.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274600": {
+    "photo_path": "data_input/photos\\840499773268083.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "331274603": {
+    "photo_path": "data_input/photos\\370060010998261.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274604": {
+    "photo_path": "data_input/photos\\513674563161923.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "331274605": {
+    "photo_path": "data_input/photos\\2969780880011089.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "331274608": {
+    "photo_path": "data_input/photos\\1513998515614265.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535335": {
+    "photo_path": "data_input/photos\\1513998515614265.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535337": {
+    "photo_path": "data_input/photos\\249018790279390.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535339": {
+    "photo_path": "data_input/photos\\582303719457196.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535344": {
+    "photo_path": "data_input/photos\\854234055158470.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535350": {
+    "photo_path": "data_input/photos\\364469525234497.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "2"
+    }
+  },
+  "376535352": {
+    "photo_path": "data_input/photos\\140532038223323.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535354": {
+    "photo_path": "data_input/photos\\431877141468269.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "school",
+      "building:levels": "2"
+    }
+  },
+  "376535359": {
+    "photo_path": "data_input/photos\\2827917137470500.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535364": {
+    "photo_path": "data_input/photos\\2827917137470500.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "376535413": {
+    "photo_path": "data_input/photos\\1569822993395597.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535421": {
+    "photo_path": "data_input/photos\\1193717131061535.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "5"
+    }
+  },
+  "376535449": {
+    "photo_path": "data_input/photos\\532634864685036.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535457": {
+    "photo_path": "data_input/photos\\2827917137470500.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail"
+    }
+  },
+  "376651037": {
+    "photo_path": "data_input/photos\\600367928014162.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "376651054": {
+    "photo_path": "data_input/photos\\1398180657225973.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "7"
+    }
+  },
+  "376651055": {
+    "photo_path": "data_input/photos\\1067323108485523.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "6"
+    }
+  },
+  "376651093": {
+    "photo_path": "data_input/photos\\827232521263403.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "6"
+    }
+  },
+  "376651096": {
+    "photo_path": "data_input/photos\\504660977327324.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "6"
+    }
+  },
+  "376651098": {
+    "photo_path": "data_input/photos\\951653692920467.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "sports_centre"
+    }
+  },
+  "376651103": {
+    "photo_path": "data_input/photos\\3395422193926448.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "6"
+    }
+  },
+  "376651111": {
+    "photo_path": "data_input/photos\\1758184498101681.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "376651130": {
+    "photo_path": "data_input/photos\\2962745060611725.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "376651151": {
+    "photo_path": "data_input/photos\\1166400254882879.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "hotel"
+    }
+  },
+  "376651156": {
+    "photo_path": "data_input/photos\\1471385889865205.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "6",
+      "building:material": "brick"
+    }
+  },
+  "396054153": {
+    "photo_path": "data_input/photos\\1788712718584915.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "3"
+    }
+  },
+  "416421844": {
+    "photo_path": "data_input/photos\\1257889637963096.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "2",
+      "roof:colour": "brown"
+    }
+  },
+  "418057369": {
+    "photo_path": "data_input/photos\\311568713925316.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "5",
+      "building:material": "brick",
+      "building:colour": "mahogany",
+      "roof:material": "slate"
+    }
+  },
+  "446708441": {
+    "photo_path": "data_input/photos\\387614019061103.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "church"
+    }
+  },
+  "487821115": {
+    "photo_path": "data_input/photos\\2869786003237987.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "8"
+    }
+  },
+  "488690084": {
+    "photo_path": "data_input/photos\\2934439943435799.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "3",
+      "building:colour": "brown"
+    }
+  },
+  "488690087": {
+    "photo_path": "data_input/photos\\1093801934439665.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "3",
+      "building:colour": "white",
+      "roof:colour": "orange"
+    }
+  },
+  "488690088": {
+    "photo_path": "data_input/photos\\517146729667824.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "3",
+      "building:colour": "white",
+      "roof:colour": "orange"
+    }
+  },
+  "577603873": {
+    "photo_path": "data_input/photos\\217285253538873.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "1"
+    }
+  },
+  "577603875": {
+    "photo_path": "data_input/photos\\788995535388353.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577603876": {
+    "photo_path": "data_input/photos\\826344801621056.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577603877": {
+    "photo_path": "data_input/photos\\922630068536484.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail"
+    }
+  },
+  "577603903": {
+    "photo_path": "data_input/photos\\788995535388353.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577605394": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605395": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605400": {
+    "photo_path": "data_input/photos\\217285253538873.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577605401": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605402": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail"
+    }
+  },
+  "577605403": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605404": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "577605406": {
+    "photo_path": "data_input/photos\\306401281202148.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577605410": {
+    "photo_path": "data_input/photos\\519604399419528.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605411": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605412": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605413": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "577605414": {
+    "photo_path": "data_input/photos\\796077531029761.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577609157": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577609158": {
+    "photo_path": "data_input/photos\\507676477256264.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577609160": {
+    "photo_path": "data_input/photos\\507676477256264.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "577609335": {
+    "photo_path": "data_input/photos\\780961056982362.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577609336": {
+    "photo_path": "data_input/photos\\221923342693773.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577609337": {
+    "photo_path": "data_input/photos\\387614019061103.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577609338": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577609339": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "3"
+    }
+  },
+  "577610031": {
+    "photo_path": "data_input/photos\\894076211436151.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577610033": {
+    "photo_path": "data_input/photos\\894076211436151.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577610034": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577610038": {
+    "photo_path": "data_input/photos\\474107053850941.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577610039": {
+    "photo_path": "data_input/photos\\154770656538493.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577610041": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577612202": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577612203": {
+    "photo_path": "data_input/photos\\1950878348422078.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577612205": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577612206": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "577612207": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577612208": {
+    "photo_path": "data_input/photos\\760135139556963.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577613129": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577613130": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577613131": {
+    "photo_path": "data_input/photos\\934488360618492.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577616200": {
+    "photo_path": "data_input/photos\\1127556091046812.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577616201": {
+    "photo_path": "data_input/photos\\489529005496402.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577616202": {
+    "photo_path": "data_input/photos\\824115841549146.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577616203": {
+    "photo_path": "data_input/photos\\489529005496402.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577616204": {
+    "photo_path": "data_input/photos\\824115841549146.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577616777": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577621264": {
+    "photo_path": "data_input/photos\\464632401312827.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577621265": {
+    "photo_path": "data_input/photos\\1111719436544542.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577621266": {
+    "photo_path": "data_input/photos\\2946570142330148.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577621267": {
+    "photo_path": "data_input/photos\\2946570142330148.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577623660": {
+    "photo_path": "data_input/photos\\2101826493550357.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577623662": {
+    "photo_path": "data_input/photos\\780961056982362.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577623667": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577623668": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577623669": {
+    "photo_path": "data_input/photos\\306401281202148.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577837301": {
+    "photo_path": "data_input/photos\\1402597433720525.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577837302": {
+    "photo_path": "data_input/photos\\587898045937358.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577837303": {
+    "photo_path": "data_input/photos\\565808227785268.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577837304": {
+    "photo_path": "data_input/photos\\587898045937358.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "civic",
+      "building:levels": "2"
+    }
+  },
+  "577837305": {
+    "photo_path": "data_input/photos\\587898045937358.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577837306": {
+    "photo_path": "data_input/photos\\503546461078664.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577837307": {
+    "photo_path": "data_input/photos\\209835837424236.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838015": {
+    "photo_path": "data_input/photos\\385843430945601.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838017": {
+    "photo_path": "data_input/photos\\524610465346191.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838018": {
+    "photo_path": "data_input/photos\\414932451490354.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838019": {
+    "photo_path": "data_input/photos\\898974383999569.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838755": {
+    "photo_path": "data_input/photos\\1465064037414532.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential",
+      "building:levels": "2"
+    }
+  },
+  "577838756": {
+    "photo_path": "data_input/photos\\4914734465222346.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential",
+      "building:levels": "2"
+    }
+  },
+  "577838757": {
+    "photo_path": "data_input/photos\\777607269612119.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577838758": {
+    "photo_path": "data_input/photos\\181198443888876.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577838759": {
+    "photo_path": "data_input/photos\\1465064037414532.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577838760": {
+    "photo_path": "data_input/photos\\760135139556963.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577838762": {
+    "photo_path": "data_input/photos\\511225399897015.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577838763": {
+    "photo_path": "data_input/photos\\1464640280549901.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial",
+      "building:levels": "3"
+    }
+  },
+  "577841618": {
+    "photo_path": "data_input/photos\\261080255838683.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577841619": {
+    "photo_path": "data_input/photos\\261080255838683.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "577841824": {
+    "photo_path": "data_input/photos\\888385962111195.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577841825": {
+    "photo_path": "data_input/photos\\286259959928953.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "578167650": {
+    "photo_path": "data_input/photos\\1504749326798507.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "578167651": {
+    "photo_path": "data_input/photos\\1504749326798507.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578167652": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578167653": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578186789": {
+    "photo_path": "data_input/photos\\1590365771806122.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "578200015": {
+    "photo_path": "data_input/photos\\387614019061103.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578200016": {
+    "photo_path": "data_input/photos\\387614019061103.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail",
+      "building:levels": "2"
+    }
+  },
+  "578260927": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578260928": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578260929": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "578261867": {
+    "photo_path": "data_input/photos\\777607269612119.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail"
+    }
+  },
+  "578261869": {
+    "photo_path": "data_input/photos\\777607269612119.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "retail"
+    }
+  },
+  "578261870": {
+    "photo_path": "data_input/photos\\814838592467607.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261878": {
+    "photo_path": "data_input/photos\\894076211436151.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261882": {
+    "photo_path": "data_input/photos\\455001810212267.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "578262114": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "578262116": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578262117": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "578262118": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "578262120": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578262121": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "578262122": {
+    "photo_path": "data_input/photos\\480082433204741.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "654367314": {
+    "photo_path": "data_input/photos\\463643936118098.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "685101788": {
+    "photo_path": "data_input/photos\\525945338777632.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "service"
+    }
+  },
+  "7167475": {
+    "photo_path": "data_input/photos\\181762203823690.jpg",
+    "osm_tags": {
+      "element": "relation",
+      "building": "yes"
+    }
+  },
+  "7167476": {
+    "photo_path": "data_input/photos\\1216877559986480.jpg",
+    "osm_tags": {
+      "element": "relation",
+      "building": "yes"
+    }
+  },
+  "7167477": {
+    "photo_path": "data_input/photos\\2869786003237987.jpg",
+    "osm_tags": {
+      "element": "relation",
+      "building": "yes"
+    }
+  },
+  "719637440": {
+    "photo_path": "data_input/photos\\142434607866057.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "984917520": {
+    "photo_path": "data_input/photos\\489529005496402.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "984917571": {
+    "photo_path": "data_input/photos\\4062384670484935.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "984917585": {
+    "photo_path": "data_input/photos\\2969780880011089.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "984917673": {
+    "photo_path": "data_input/photos\\218375263106421.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "984917732": {
+    "photo_path": "data_input/photos\\511225399897015.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "984917774": {
+    "photo_path": "data_input/photos\\486089562701090.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "984917822": {
+    "photo_path": "data_input/photos\\824115841549146.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917857": {
+    "photo_path": "data_input/photos\\2827917137470500.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "984917884": {
+    "photo_path": "data_input/photos\\1513998515614265.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "984918064": {
+    "photo_path": "data_input/photos\\516829019678596.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "warehouse"
+    }
+  },
+  "984918114": {
+    "photo_path": "data_input/photos\\990726799899085.jpg",
+    "osm_tags": {
+      "element": "way",
+      "building": "transportation",
+      "building:levels": "1"
+    }
+  },
+  "578166480": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "984917863": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "578261875": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261874": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535407": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "984917619": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "578261879": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605396": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577607243": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "984917664": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "577603878": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "577837309": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577603879": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578260924": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577609159": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376651040": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "commercial"
+    }
+  },
+  "984917644": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "garage"
+    }
+  },
+  "578261871": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578165491": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "residential",
+      "building:levels": "3"
+    }
+  },
+  "578167654": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577612204": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "6"
+    }
+  },
+  "577605399": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "331274593": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "hotel"
+    }
+  },
+  "577609470": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261877": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "487618609": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "yes",
+      "building:levels": "1",
+      "building:colour": "white"
+    }
+  },
+  "577603912": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535404": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "578261873": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577623670": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376535376": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578260923": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577605409": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261876": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "376535345": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577623666": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577616199": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "376535351": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "578260926": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605398": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577607245": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "577612201": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "984917739": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "984917891": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "577603884": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578166482": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261880": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577603881": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577623663": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577603910": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917950": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "578166479": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "984917742": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "577603911": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "376651104": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "578260925": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "376535414": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "yes"
+    }
+  },
+  "376535361": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "577610032": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577623659": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577603913": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "376535326": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917642": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577616775": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "4"
+    }
+  },
+  "578261881": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "984917791": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578262115": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578166481": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577605521": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577603880": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577605415": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577623664": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "577605522": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917568": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "5"
+    }
+  },
+  "376535378": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917888": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "garage"
+    }
+  },
+  "577610035": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577837310": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "376535363": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "office"
+    }
+  },
+  "577621263": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577616774": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house",
+      "building:levels": "2"
+    }
+  },
+  "376535426": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "578261883": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577623665": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "578261872": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "577609471": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984918003": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "577837308": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "578166478": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577616778": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "376535369": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577610036": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "376535365": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577610037": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "2"
+    }
+  },
+  "577605397": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments"
+    }
+  },
+  "376535388": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "364189559": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "civic"
+    }
+  },
+  "577605416": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "residential"
+    }
+  },
+  "578260922": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "577616198": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "apartments",
+      "building:levels": "3"
+    }
+  },
+  "354248054": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "office",
+      "building:levels": "2",
+      "building:colour": "white",
+      "roof:colour": "#e2725b"
+    }
+  },
+  "376535340": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "house"
+    }
+  },
+  "984917641": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "shed"
+    }
+  },
+  "577603872": {
+    "photo_path": null,
+    "osm_tags": {
+      "element": "way",
+      "building": "garage"
+    }
+  }
+}
