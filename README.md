@@ -413,14 +413,5 @@ Contributions welcome! Please:
 
 ---
 
-## Related Projects
-
-- [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything)
-- [OSMnx](https://github.com/gboeing/osmnx)
-- [HuggingFace Transformers](https://github.com/huggingface/transformers)
-- [NVIDIA NeMo](https://github.com/NVIDIA/NeMo)
-
----
-
 **Last Updated**: December 2025
 **Version**: 2.0.0
