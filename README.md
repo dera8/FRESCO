@@ -5,16 +5,6 @@ A research pipeline for extracting building parts (walls, roofs, roads) from str
 
 ---
 
-## 🆕 What's New in v2
-
-- **SAM3 Integration**: State-of-the-art semantic segmentation with Segment Anything Model 3
-- **Hierarchical Architecture**: Two-level segmentation (semantic → instance → per-building)
-- **Intelligent Material Analysis**: Building-specific or class-based approach automatically selected
-- **VLM-Powered**: Material detection using NVIDIA Nemotron vision-language model
-- **Multi-Building Support**: Handles complex scenes with multiple buildings per photo
-
----
-
 ## Overview
 
 AutoPBR v2 processes street-level photographs through an intelligent multi-stage pipeline:
