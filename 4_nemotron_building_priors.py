@@ -1,469 +1,407 @@
 #!/usr/bin/env python3
-"""
-Hybrid Material Analysis: Per-Building + Per-Class
-===================================================
-INTELLIGENTE: Sceglie automaticamente l'approccio migliore
-
-Se 1 building:  RGB ⊙ mask_class → Nemotron (semplice)
-Se N buildings: RGB ⊙ composite_building → Nemotron (preciso)
-
-Input: sam3_hierarchical_final/manifest_hierarchical.json
-Output: materials_hybrid.json
-"""
-
+import os
 import base64
 import json
+import argparse
 from pathlib import Path
-from openai import OpenAI
-from PIL import Image
+from typing import Dict, Any, Optional, Tuple, Union
+
 import numpy as np
-import logging
+from PIL import Image
+from openai import OpenAI
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-logger = logging.getLogger(__name__)
+# =========================
+# CLASSES / MASKS
+# =========================
+CLASS_IDS = {"road": 1, "wall": 2, "roof": 3}
+CLASSES = ["road", "wall", "roof"]
 
-# ============================================================================
-# CONFIGURAZIONE
-# ============================================================================
+# =========================
+# VOCABS (SOFT CANONICALIZATION)
+# - values are ECCV macro-labels
+# =========================
+MATERIAL_VOCAB = {
+    # road-ish
+    "asphalt": "asphalt",
+    "tarmac": "asphalt",
+    "bitumen": "asphalt",
+    "concrete": "concrete",
+    "cement": "concrete",
+    "paver": "brick_paver",
+    "pavers": "brick_paver",
+    "brick": "brick_paver",
+    "bricks": "brick_paver",
+    "cobblestone": "stone_paver",
+    "cobblestones": "stone_paver",
+    "stone": "stone_paver",
+    "granite": "stone_paver",
 
-NVIDIA_API_KEY = "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"
-MODEL = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+    # wall-ish
+    "wood": "wood",
+    "timber": "wood",
+    "plaster": "plaster",
+    "stucco": "plaster",
+    "render": "plaster",
+    "glass": "glass",
+    "metal": "metal",
+    "steel": "metal",
+    "copper": "metal",
+    "zinc": "metal",
+    "paint": "painted_surface",
+    "painted": "painted_surface",
 
-# Directories
-ROOT = Path(__file__).parent
-PHOTOS_DIR = ROOT / "photos2"
-SEMANTIC_DIR = ROOT / "sam3_semantic2"
-HIERARCHICAL_DIR = ROOT / "sam3_hierarchical_final"
-MASKED_DIR = ROOT / "masked_rgb_hybrid"
-OUTPUT_FILE = ROOT / "materials_hybrid.json"
-
-MASKED_DIR.mkdir(parents=True, exist_ok=True)
-
-# Classes
-CLASSES = ["wall", "roof", "road"]
-
-# Setup OpenAI client
-client = OpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=NVIDIA_API_KEY
-)
-
-# ============================================================================
-# HELPER: CREATE MASKED RGB
-# ============================================================================
-
-def create_class_masked_rgb(rgb_path: Path, class_name: str) -> Path:
-    """
-    Simple approach: RGB ⊙ mask_class
-    Used when only 1 building or for road (always global)
-    """
-    mask_path = SEMANTIC_DIR / f"{rgb_path.stem}_{class_name}.png"
-    
-    if not mask_path.exists():
-        return None
-    
-    rgb = np.array(Image.open(rgb_path).convert("RGB"))
-    mask = np.array(Image.open(mask_path).convert("L"))
-    mask_3ch = np.stack([mask > 0] * 3, axis=-1)
-    masked_rgb = rgb * mask_3ch
-    
-    output_path = MASKED_DIR / f"{rgb_path.stem}_{class_name}_simple.jpg"
-    Image.fromarray(masked_rgb.astype(np.uint8)).save(output_path, quality=95)
-    
-    return output_path
-
-
-def create_building_masked_rgb(rgb_path: Path, composite_path: Path, 
-                               building_idx: int, class_name: str) -> Path:
-    """
-    Building-specific approach: RGB ⊙ (composite == class_id)
-    Used when multiple buildings in same photo
-    """
-    if not composite_path.exists():
-        return None
-    
-    rgb = np.array(Image.open(rgb_path).convert("RGB"))
-    composite = np.array(Image.open(composite_path).convert("L"))
-    
-    # Map class to ID
-    class_ids = {"road": 1, "wall": 2, "roof": 3}
-    class_id = class_ids.get(class_name, 0)
-    
-    # Create mask for this class in this building
-    mask = (composite == class_id)
-    mask_3ch = np.stack([mask] * 3, axis=-1)
-    masked_rgb = rgb * mask_3ch
-    
-    photo_id = rgb_path.stem
-    output_path = MASKED_DIR / f"{photo_id}_building{building_idx:02d}_{class_name}.jpg"
-    Image.fromarray(masked_rgb.astype(np.uint8)).save(output_path, quality=95)
-    
-    return output_path
-
-
-# ============================================================================
-# PROMPT TEMPLATES
-# ============================================================================
-
-PROMPT_SIMPLE = """
-You are analyzing {class_name} materials in Bryggen, Bergen (Norway).
-
-The image shows ONLY the {class_name} (rest is black/masked out).
-
-TASK: Analyze the visible region and identify materials, colors, and patterns.
-
-OUTPUT (JSON only):
-{{
-  "material": ["option1", "option2"],
-  "color": ["color1", "color2"],
-  "pattern": ["pattern1"],
-  "condition": "description",
-  "confidence": "high/medium/low"
-}}
-
-CONTEXT:
-{context}
-"""
-
-PROMPT_BUILDING = """
-You are analyzing a SPECIFIC BUILDING's {class_name} in Bryggen, Bergen (Norway).
-
-The image shows ONLY this building's {class_name} (rest is black).
-This is building #{building_idx} out of {total_buildings} visible in the photo.
-
-TASK: Identify materials, colors, and patterns for THIS SPECIFIC building's {class_name}.
-
-OUTPUT (JSON only):
-{{
-  "material": ["specific_material_1", "material_2"],
-  "color": ["specific_color_1", "color_2"],
-  "pattern": ["pattern_1"],
-  "condition": "condition_description",
-  "confidence": "high/medium/low",
-  "distinguishing_features": "what makes this building unique"
-}}
-
-CONTEXT:
-{context}
-Building coverage: {coverage}%
-"""
-
-CLASS_CONTEXTS = {
-    "wall": "Walls: painted wooden planks (red ochre, yellow, white, brown), brick, stone",
-    "roof": "Roofs: clay tiles, slate, wooden shingles, metal (terracotta, grey, brown)",
-    "road": "Roads: cobblestone, stone pavement, wooden docks (grey, brown, black)"
+    # roof-ish
+    "tile": "tile",
+    "tiles": "tile",
+    "clay tile": "tile",
+    "terracotta": "tile",
+    "slate": "slate",
+    "shingle": "shingles",
+    "shingles": "shingles",
+    "asphalt shingles": "shingles",
 }
 
+COLOR_VOCAB = {
+    "black": "black",
+    "grey": "gray",
+    "gray": "gray",
+    "white": "white",
+    "red": "red",
+    "brown": "brown",
+    "yellow": "yellow",
+    "blue": "blue",
+    "green": "green",
+    "beige": "beige",
+    "tan": "beige",
+    "orange": "orange",
+}
 
-# ============================================================================
-# ANALYSIS FUNCTIONS
-# ============================================================================
+SURFACE_VOCAB = {
+    "smooth": "smooth",
+    "flat": "smooth",
+    "polished": "smooth",
+    "rough": "rough",
+    "textured": "rough",
+    "grainy": "rough",
+    # patterns often used as texture descriptors → fold into rough
+    "patterned": "rough",
+    "striped": "rough",
+    "checkered": "rough",
+    "tile": "rough",
+    "solid": "unknown",
+    "none": "unknown",
+}
 
+AGING_VOCAB = {
+    "new": "new",
+    "well-maintained": "well_maintained",
+    "well maintained": "well_maintained",
+    "maintained": "well_maintained",
+    "weathered": "weathered",
+    "worn": "worn",
+    "aged": "aged",
+    "dirty": "dirty",
+    "stained": "dirty",
+    "damaged": "damaged",
+}
+
+CONF_TEXT_TO_NUM = {"high": 0.85, "medium": 0.55, "low": 0.25}
+
+# =========================
+# PROMPT
+# - IMPORTANT: We DO NOT over-constrain the model.
+# - We ask for a descriptor + confidence numeric.
+# - We allow "other:<free_text>" for class/color/etc if unsure.
+# =========================
+PROMPT = """
+You are analyzing ONLY the {class_name} region in an urban street-level photo.
+The image is masked: ONLY the target region is visible, everything else is black.
+
+TASK:
+Return a SINGLE structured material descriptor.
+
+Rules:
+- JSON only. No extra text.
+- confidence MUST be a number in [0, 1].
+- If you are uncertain or the best label is not in common categories, use "other:<short label>".
+
+OUTPUT JSON:
+{{
+  "class": "asphalt | concrete | brick | stone | wood | plaster | glass | metal | tile | slate | shingles | other:<...> | unknown",
+  "color": "black|gray|white|red|brown|yellow|blue|green|beige|orange|other:<...>|unknown",
+  "surface": "smooth|rough|other:<...>|unknown",
+  "aging": "new|well_maintained|weathered|worn|aged|dirty|damaged|other:<...>|unknown",
+  "confidence": 0.0
+}}
+""".strip()
+
+# =========================
+# Utils
+# =========================
 def encode_image_base64(path: Path) -> str:
-    """Encode image to base64"""
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
+def parse_json_from_text(raw: str) -> Dict[str, Any]:
+    raw = raw.strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError(f"No JSON object found. Raw: {raw[:200]}")
+    return json.loads(raw[start:end + 1])
 
-def analyze_simple(masked_rgb_path: Path, class_name: str) -> dict:
-    """
-    Simple analysis: one class across entire photo
-    """
-    try:
-        img_b64 = encode_image_base64(masked_rgb_path)
-        
-        prompt = PROMPT_SIMPLE.format(
-            class_name=class_name,
-            context=CLASS_CONTEXTS[class_name]
-        )
-        
-        response = client.chat.completions.create(
-            model=MODEL,
-            temperature=0.6,
-            max_tokens=400,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
-                ],
-            }],
-        )
-        
-        raw = response.choices[0].message.content
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        parsed = json.loads(raw[start:end])
-        
-        return {
-            "success": True,
-            "approach": "simple",
-            "data": parsed,
-            "masked_rgb": str(masked_rgb_path)
-        }
-        
-    except Exception as e:
-        logger.error(f"      ❌ Analysis failed: {e}")
-        return {"success": False, "error": str(e)}
+def _norm(x: str) -> str:
+    return (x or "").strip().lower()
 
+def _pick_first(v: Union[str, list, None]) -> Optional[str]:
+    if isinstance(v, list) and v:
+        return v[0]
+    if isinstance(v, str):
+        return v
+    return None
 
-def analyze_building_specific(masked_rgb_path: Path, class_name: str,
-                              building_idx: int, total_buildings: int, 
-                              coverage: float) -> dict:
+def canonicalize_value(
+    raw_value: Any,
+    vocab: Dict[str, str],
+    default: str = "unknown",
+    mode: str = "soft",
+    keep_other: bool = True,
+    other_prefix: str = "other:"
+) -> str:
     """
-    Building-specific analysis: one class of one building
+    mode:
+      - off: return raw (cleaned) or default
+      - soft: map when possible, else keep "other:<token>" if any, else "other:<raw>" or default
+      - hard: force to vocab values or default
     """
-    try:
-        img_b64 = encode_image_base64(masked_rgb_path)
-        
-        prompt = PROMPT_BUILDING.format(
-            class_name=class_name,
-            building_idx=building_idx,
-            total_buildings=total_buildings,
-            context=CLASS_CONTEXTS[class_name],
-            coverage=coverage
-        )
-        
-        response = client.chat.completions.create(
-            model=MODEL,
-            temperature=0.6,
-            max_tokens=500,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
-                ],
-            }],
-        )
-        
-        raw = response.choices[0].message.content
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        parsed = json.loads(raw[start:end])
-        
-        return {
-            "success": True,
-            "approach": "building_specific",
-            "data": parsed,
-            "masked_rgb": str(masked_rgb_path)
-        }
-        
-    except Exception as e:
-        logger.error(f"      ❌ Analysis failed: {e}")
-        return {"success": False, "error": str(e)}
+    raw = _pick_first(raw_value)
+    if raw is None:
+        return default
+    tok = _norm(raw)
+    if not tok:
+        return default
 
+    if mode == "off":
+        return tok
 
-# ============================================================================
-# INTELLIGENT PROCESSING
-# ============================================================================
+    # already marked as other
+    if keep_other and tok.startswith(other_prefix):
+        # compress: other:foo bar -> other:foo_bar
+        tail = tok[len(other_prefix):].strip().replace(" ", "_")
+        return f"{other_prefix}{tail}" if tail else default
 
-def process_image_intelligent(photo_path: Path, buildings_data: list) -> dict:
+    # direct synonym mapping
+    if tok in vocab:
+        return vocab[tok]
+
+    # allow if the model already outputs macro label
+    if tok in set(vocab.values()):
+        return tok
+
+    # substring match (e.g. "asphalt road" contains asphalt)
+    for k, v in vocab.items():
+        if k in tok:
+            return v
+
+    if mode == "hard":
+        return default
+
+    # soft fallback
+    if keep_other:
+        # keep compact token, not a full sentence
+        short = tok.split(",")[0].split(".")[0]
+        short = short.replace(" ", "_")
+        return f"{other_prefix}{short[:32]}" if short else default
+
+    return default
+
+def canonicalize_confidence(raw_conf: Any) -> float:
+    if isinstance(raw_conf, (int, float)):
+        c = float(raw_conf)
+        return max(0.0, min(1.0, c))
+    if isinstance(raw_conf, str):
+        t = _norm(raw_conf)
+        if t in CONF_TEXT_TO_NUM:
+            return CONF_TEXT_TO_NUM[t]
+        try:
+            c = float(t)
+            return max(0.0, min(1.0, c))
+        except Exception:
+            return 0.5
+    return 0.5
+
+def make_descriptor(parsed: Dict[str, Any], canon_mode: str) -> Dict[str, Any]:
     """
-    INTELLIGENT: Choose best approach based on number of buildings
-    
-    Strategy:
-    - 0-1 buildings: Simple approach (RGB ⊙ mask_class)
-    - 2+ buildings: Building-specific approach (RGB ⊙ composite per building)
-    - Road: Always simple (global, not building-specific)
+    Build ECCV descriptor from parsed JSON (supports legacy keys too).
     """
-    photo_id = photo_path.stem
-    num_buildings = len(buildings_data)
-    
-    logger.info(f"\n{'='*60}")
-    logger.info(f"📸 {photo_id}")
-    logger.info(f"{'='*60}")
-    logger.info(f"Buildings detected: {num_buildings}")
-    
-    result = {
-        "photo_id": photo_id,
-        "photo_path": str(photo_path),
-        "num_buildings": num_buildings,
-        "approach": "building_specific" if num_buildings > 1 else "simple",
-        "buildings": []
+    raw_class = parsed.get("class", parsed.get("material"))
+    raw_color = parsed.get("color")
+    raw_surface = parsed.get("surface", parsed.get("pattern"))
+    raw_aging = parsed.get("aging", parsed.get("condition"))
+    raw_conf = parsed.get("confidence")
+
+    return {
+        "class": canonicalize_value(raw_class, MATERIAL_VOCAB, mode=canon_mode),
+        "color": canonicalize_value(raw_color, COLOR_VOCAB, mode=canon_mode),
+        "surface": canonicalize_value(raw_surface, SURFACE_VOCAB, mode=canon_mode),
+        "aging": canonicalize_value(raw_aging, AGING_VOCAB, mode=canon_mode),
+        "confidence": canonicalize_confidence(raw_conf),
     }
-    
-    # CASE 1: No buildings or 1 building → Simple approach
-    if num_buildings <= 1:
-        logger.info("📌 Using SIMPLE approach (1 or 0 buildings)")
-        
-        building_result = {"building_idx": 0, "classes": {}}
-        
-        for class_name in CLASSES:
-            logger.info(f"  🔍 {class_name.upper()}")
-            
-            masked_rgb = create_class_masked_rgb(photo_path, class_name)
-            
-            if not masked_rgb:
-                logger.info(f"    ⚠️  No mask available")
-                continue
-            
-            # Calculate coverage
-            mask_path = SEMANTIC_DIR / f"{photo_id}_{class_name}.png"
-            mask = np.array(Image.open(mask_path).convert("L"))
-            coverage = (mask > 0).sum() / mask.size * 100
-            
-            logger.info(f"    Coverage: {coverage:.1f}%")
-            
-            if coverage < 0.1:
-                logger.info(f"    ⚠️  Too small, skipping")
-                continue
-            
-            analysis = analyze_simple(masked_rgb, class_name)
-            
-            if analysis["success"]:
-                mat = analysis['data'].get('material', ['N/A'])[0]
-                col = analysis['data'].get('color', ['N/A'])[0]
-                logger.info(f"    ✓ {mat}, {col}")
-            
-            building_result["classes"][class_name] = analysis
-        
-        result["buildings"].append(building_result)
-    
-    # CASE 2: Multiple buildings → Building-specific approach
-    else:
-        logger.info(f"📌 Using BUILDING-SPECIFIC approach ({num_buildings} buildings)")
-        
-        for building in buildings_data:
-            building_idx = building['building_idx']
-            composite_path = Path(building['composite_mask'])
-            coverage_data = building['coverage']
-            
-            logger.info(f"\n  🏢 Building {building_idx:02d}")
-            
-            building_result = {
-                "building_idx": building_idx,
-                "composite_mask": str(composite_path),
-                "classes": {}
-            }
-            
-            for class_name in CLASSES:
-                logger.info(f"    🔍 {class_name}")
-                
-                # Road is always global (not building-specific)
-                if class_name == "road":
-                    masked_rgb = create_class_masked_rgb(photo_path, class_name)
-                    if masked_rgb:
-                        analysis = analyze_simple(masked_rgb, class_name)
-                    else:
-                        analysis = {"success": False, "error": "no_mask"}
-                else:
-                    # Wall and roof are building-specific
-                    masked_rgb = create_building_masked_rgb(
-                        photo_path, composite_path, building_idx, class_name
-                    )
-                    
-                    if not masked_rgb:
-                        logger.info(f"      ⚠️  Failed to create masked RGB")
-                        continue
-                    
-                    coverage = coverage_data.get(class_name, 0)
-                    
-                    if coverage < 0.1:
-                        logger.info(f"      ⚠️  Too small ({coverage:.1f}%)")
-                        continue
-                    
-                    analysis = analyze_building_specific(
-                        masked_rgb, class_name, building_idx, 
-                        num_buildings, coverage
-                    )
-                
-                if analysis.get("success"):
-                    mat = analysis['data'].get('material', ['N/A'])[0]
-                    col = analysis['data'].get('color', ['N/A'])[0]
-                    logger.info(f"      ✓ {mat}, {col}")
-                
-                building_result["classes"][class_name] = analysis
-            
-            result["buildings"].append(building_result)
-    
-    return result
 
+# =========================
+# Masking
+# =========================
+def masked_from_semantic(
+    rgb_path: Path,
+    semantic_path: Path,
+    class_name: str,
+    out_path: Path
+) -> float:
+    rgb = np.array(Image.open(rgb_path).convert("RGB"))
+    sem = np.array(Image.open(semantic_path).convert("L"))
+    class_id = CLASS_IDS[class_name]
+    mask = (sem == class_id)
+    coverage = mask.mean() * 100.0
+    if coverage <= 0:
+        return 0.0
+    masked_rgb = rgb * np.stack([mask] * 3, axis=-1)
+    Image.fromarray(masked_rgb.astype(np.uint8)).save(out_path, quality=95)
+    return coverage
 
-# ============================================================================
-# MAIN
-# ============================================================================
+# =========================
+# Nemotron call
+# =========================
+def analyze_with_nemotron(client: OpenAI, model: str, img_path: Path, class_name: str) -> Tuple[Dict[str, Any], str]:
+    img_b64 = encode_image_base64(img_path)
+    prompt = PROMPT.format(class_name=class_name)
 
+    resp = client.chat.completions.create(
+        model=model,
+        temperature=0.4,  # lower = more stable
+        max_tokens=220,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}} ,
+            ]
+        }]
+    )
+
+    raw = resp.choices[0].message.content
+    parsed = parse_json_from_text(raw)
+    return parsed, raw
+
+# =========================
+# Main
+# =========================
 def main():
-    logger.info("="*60)
-    logger.info("HYBRID MATERIAL ANALYSIS (Intelligent)")
-    logger.info("="*60)
-    logger.info("Strategy:")
-    logger.info("  • 0-1 buildings → Simple (RGB ⊙ mask_class)")
-    logger.info("  • 2+ buildings  → Per-building (RGB ⊙ composite)")
-    logger.info("  • Road          → Always global")
-    logger.info("="*60)
-    
-    # Load hierarchical manifest
-    manifest_path = HIERARCHICAL_DIR / "manifest_hierarchical.json"
-    
-    if not manifest_path.exists():
-        logger.error(f"❌ Manifest not found: {manifest_path}")
-        logger.error("   Run: python sam3hi.py --all")
-        return
-    
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        manifest = json.load(f)
-    
-    logger.info(f"\n✅ Loaded {len(manifest)} images")
-    
-    # Process each image
-    results = []
-    total_buildings = 0
-    success_by_class = {"wall": 0, "roof": 0, "road": 0}
-    total_by_class = {"wall": 0, "roof": 0, "road": 0}
-    
-    for idx, entry in enumerate(manifest, 1):
-        photo_path = Path(entry['image'])
-        buildings_data = entry.get('buildings', [])
-        
-        logger.info(f"\n[{idx}/{len(manifest)}]")
-        
-        result = process_image_intelligent(photo_path, buildings_data)
-        results.append(result)
-        
-        total_buildings += len(buildings_data) if buildings_data else 1
-        
-        # Update stats
-        for building in result['buildings']:
-            for class_name, analysis in building['classes'].items():
-                total_by_class[class_name] += 1
-                if analysis.get('success'):
-                    success_by_class[class_name] += 1
-    
-    # Save results
-    output_data = {
-        "results": results,
-        "statistics": {
-            "total_images": len(results),
-            "total_buildings": total_buildings,
-            "per_class": {
-                cls: {
-                    "total": total_by_class[cls],
-                    "successful": success_by_class[cls],
-                    "rate": f"{success_by_class[cls]/total_by_class[cls]*100:.1f}%"
-                        if total_by_class[cls] > 0 else "0%"
-                }
-                for cls in CLASSES
-            }
-        }
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--photos_dir", default="photos2")
+    ap.add_argument("--semantic_dir", default="semantic_masks", help="Folder with <id>_semantic.png (0/1/2/3)")
+    ap.add_argument("--masked_dir", default="masked_rgb", help="Debug masked RGB outputs")
+    ap.add_argument("--out_json", default="materials_per_image.json")
+    ap.add_argument("--model", default="nvidia/llama-3.1-nemotron-nano-vl-8b-v1")
+    ap.add_argument("--min_cov", type=float, default=0.2, help="Skip if coverage < min_cov (%)")
+    ap.add_argument("--limit", type=int, default=0, help="If >0, process only first N images")
+
+    # NEW:
+    ap.add_argument("--canon_mode", choices=["off", "soft", "hard"], default="soft",
+                    help="Canonicalization: off=raw only, soft=map when possible else other:<..>, hard=force closed-set")
+    ap.add_argument("--save_raw_text", action="store_true",
+                    help="If set, also store the raw model response text (bigger JSON).")
+    args = ap.parse_args()
+
+    api_key = os.getenv("NVIDIA_API_KEY")
+    if not api_key:
+        raise SystemExit("❌ Missing NVIDIA_API_KEY env var. Set it before running.")
+
+    root = Path.cwd()
+    photos_dir = Path(args.photos_dir) if Path(args.photos_dir).is_absolute() else (root / args.photos_dir)
+    semantic_dir = Path(args.semantic_dir) if Path(args.semantic_dir).is_absolute() else (root / args.semantic_dir)
+    masked_dir = root / args.masked_dir
+    masked_dir.mkdir(parents=True, exist_ok=True)
+
+    images = sorted(photos_dir.glob("*.jpg"))
+    if args.limit and args.limit > 0:
+        images = images[:args.limit]
+    if not images:
+        raise SystemExit(f"❌ No .jpg found in {photos_dir}")
+
+    client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key)
+
+    results: Dict[str, Any] = {
+        "meta": {
+            "model": args.model,
+            "canon_mode": args.canon_mode,
+            "min_cov": args.min_cov,
+            "photos_dir": str(photos_dir),
+            "semantic_dir": str(semantic_dir),
+        },
+        "data": {}
     }
-    
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=2, ensure_ascii=False)
-    
-    logger.info("\n" + "="*60)
-    logger.info("🎉 ANALYSIS COMPLETE!")
-    logger.info("="*60)
-    logger.info(f"\n📊 Statistics:")
-    logger.info(f"  Images:    {len(results)}")
-    logger.info(f"  Buildings: {total_buildings}")
-    for cls in CLASSES:
-        logger.info(f"  {cls.capitalize():5s}: {success_by_class[cls]}/{total_by_class[cls]} "
-                   f"({success_by_class[cls]/total_by_class[cls]*100:.1f}%)")
-    logger.info(f"\n💾 Output:")
-    logger.info(f"  {OUTPUT_FILE}")
-    logger.info(f"  {MASKED_DIR}/")
+
+    for i, rgb_path in enumerate(images, 1):
+        photo_id = rgb_path.stem
+        sem_path = semantic_dir / f"{photo_id}_semantic.png"
+        if not sem_path.exists():
+            print(f"[{i}/{len(images)}] ⚠️ missing semantic mask: {sem_path.name}")
+            continue
+
+        print(f"[{i}/{len(images)}] 📸 {photo_id}")
+        per_class: Dict[str, Any] = {}
+
+        for cls in CLASSES:
+            out_masked = masked_dir / f"{photo_id}_{cls}.jpg"
+            cov = masked_from_semantic(rgb_path, sem_path, cls, out_masked)
+
+            if cov < args.min_cov:
+                per_class[cls] = {"skipped": True, "coverage": round(cov, 3)}
+                continue
+
+            try:
+                parsed_json, raw_text = analyze_with_nemotron(client, args.model, out_masked, cls)
+
+                # two-level output
+                descriptor = make_descriptor(parsed_json, args.canon_mode)
+
+                per_class[cls] = {
+                    "skipped": False,
+                    "coverage": round(cov, 3),
+                    "masked_rgb": str(out_masked),
+
+                    # ✅ RAW (for analysis + ablations)
+                    "raw_prediction": parsed_json,
+
+                    # ✅ CANONICAL (for metrics/plots in ECCV)
+                    "material_descriptor": descriptor,
+                }
+
+                if args.save_raw_text:
+                    per_class[cls]["raw_text"] = raw_text
+
+                print(f"   ✓ {cls}: {descriptor['class']} | conf={descriptor['confidence']:.2f} ({cov:.1f}%)")
+
+            except Exception as e:
+                per_class[cls] = {
+                    "skipped": False,
+                    "coverage": round(cov, 3),
+                    "masked_rgb": str(out_masked),
+                    "error": str(e),
+                }
+                print(f"   ❌ {cls}: {e}")
+
+        results["data"][photo_id] = {
+            "image": str(rgb_path),
+            "semantic_mask": str(sem_path),
+            "classes": per_class,
+        }
+
+    out_path = root / args.out_json
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
+    print(f"\n✅ Saved: {out_path}")
 
 
 if __name__ == "__main__":
