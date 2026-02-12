@@ -1,0 +1,63 @@
+# config/pipeline.yaml
+paths:
+  photos_dir: photos2
+  out_root: data_output
+
+env:
+  required:
+    - NVIDIA_API_KEY
+
+steps:
+  sam3:
+    enabled: true
+    script: 2_sam3hi.py
+    args:
+      # se il tuo script NON usa questi flag, toglili o rinominali
+      photos_dir: "{photos_dir}"
+      out_dir: "{out_root}/sam3_instances"
+      per_building: true
+      min_inst_bbox_h_wall: 70
+      min_inst_bbox_h_roof: 110
+
+  proxy:
+    enabled: true
+    script: 3_proxy_semantic_check.py
+    args:
+      sam_dir: "{out_root}/sam3_instances"
+      manifest_out: "{out_root}/sam3_instances/manifest.json"
+
+  nemotron_structured:
+    enabled: true
+    script: 4_nemotron_building_priors.py
+    args:
+      manifest: "{out_root}/sam3_instances/manifest.json"
+      masked_dir: "{out_root}/masked_rgb"
+      output: "materials_v2_filtered.json"
+      model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+      canon_mode: "soft"
+      per_building: true
+      skip_far_buildings: true
+      min_cov_global_pct: 1.0
+      min_cov_roof_pct: 1.5
+      min_cov_building_pct: 0.5
+      min_cov_roof_building_pct: 0.5
+      crop_pad: 24
+      min_crop_side: 64
+      max_retries: 3
+      retry_backoff: 0.8
+
+  baseline_fullimage:
+    enabled: false
+    script: 5_nemotron_fullimage.py
+    args:
+      photos_dir: "{photos_dir}"
+      output: "baseline_full_image.json"
+      model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+
+  validation:
+    enabled: false
+    script: validator.py
+    args:
+      structured: "materials_v2_filtered.json"
+      baseline: "baseline_full_image.json"
+      out: "{out_root}/validation_results/report.csv"
