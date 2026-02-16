@@ -7,7 +7,7 @@
 # GLOBAL PATHS
 # =========================
 paths:
-  photos_dir: photos2
+  photos_dir: photos
   output_root: data_output
 
 # =========================
@@ -53,6 +53,10 @@ sam3:
   min_inst_bbox_h_roof: 110
 
   out_dir: "{output_root}/sam3_instances"
+  images_dir: "{photos_dir}"
+  pattern: "*.jpg"
+  score_thr: 0.6
+  mask_thr: 0.5
 
 # =========================
 # STEP 2 — PROXY SEMANTIC CHECK
@@ -60,31 +64,31 @@ sam3:
 proxy_check:
   enabled: true
   script: 3_proxy_semantic_check.py
-  sam_dir: "{output_root}/sam3_instances"
-  manifest_out: "{output_root}/sam3_instances/manifest.json"
+  out_dir: "{output_root}/sam3_instances"
+  manifest: "{output_root}/sam3_instances/manifest.json"
 
 # =========================
 # STEP 3 — NEMOTRON STRUCTURED
 # =========================
+#version: v2.1_filtered
 nemotron_structured:
   enabled: true
   script: 4_nemotron_building_priors.py
 
   model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
-  version: v2.1_filtered
   canon_mode: soft
   per_building: true
   skip_far_buildings: true
 
   manifest: "{output_root}/sam3_instances/manifest.json"
   masked_dir: "{output_root}/masked_rgb"
-  output_json: materials_v2_filtered.json
+  out_json: materials_v2_filtered.json
 
   # Coverage thresholds
-  min_cov_global_pct: 1.0
-  min_cov_roof_pct: 1.5
-  min_cov_building_pct: 0.5
-  min_cov_roof_building_pct: 0.5
+  min_cov: 1.0
+  min_cov_roof: 1.5
+  min_cov_building: 0.5
+  min_cov_roof_building: 0.5
   roof_conf_threshold: 0.6
 
   # Cropping policy

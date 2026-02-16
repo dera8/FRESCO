@@ -268,14 +268,17 @@ def main():
     errors = 0
     
     for i, item in enumerate(manifest, 1):
-        # ✅ FIX: Use "rgb" key from your manifest
+        # ✅ FIX: Safely check both keys and ensure it's a file
         img_id = item.get("id", f"image_{i}")
-        rgb_path = Path(item.get("rgb", ""))  # ← Changed from "image" to "rgb"
         
-        # Validate path
-        if not rgb_path or not rgb_path.exists():
+        # Grab the path string, fallback to "image" if "rgb" is missing
+        raw_path_str = item.get("rgb") or item.get("image") or ""
+        rgb_path = Path(raw_path_str)
+        
+        # Validate that it's actually a file, not just an empty directory path
+        if not raw_path_str or not rgb_path.is_file():
             skipped += 1
-            print(f"[{i}/{len(manifest)}] ⚠️  {img_id}: missing file {rgb_path}")
+            print(f"[{i}/{len(manifest)}] ⚠️  {img_id}: missing or invalid file path -> '{raw_path_str}'")
             continue
         
         print(f"[{i}/{len(manifest)}] 📸 {img_id}")
