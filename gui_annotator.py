@@ -3,7 +3,7 @@ import json
 import copy
 import numpy as np
 from pathlib import Path
-from PIL import Image  # <-- Added this
+from PIL import Image
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QVBoxLayout, QListWidget, QLabel, QComboBox, 
                              QPushButton, QFormLayout, QMessageBox)
@@ -16,13 +16,18 @@ MATERIALS = ["asphalt", "concrete", "brick", "stone", "wood", "plaster",
 COLORS = ["black", "gray", "white", "red", "brown", "yellow", 
           "blue", "green", "beige", "orange", "unknown"]
 
+def normalize_path(path_str):
+    """Convert Windows paths to Linux paths safely."""
+    if not path_str:
+        return None
+    return str(path_str).replace('\\', '/')
+
 class AnnotatorGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AutoPBR Material Annotator & GT Generator")
         self.setGeometry(100, 100, 1200, 800)
 
-        # In-memory data
         self.manifest_data = []
         self.nemotron_data = {}
         self.current_image_data = None
@@ -30,10 +35,10 @@ class AnnotatorGUI(QMainWindow):
 
         self.init_ui()
         
-        # NOTE: Update these paths if your files are located somewhere else!
+        # NOTE: Make sure these point to your merged JSON!
         self.load_data(
-            manifest_path="data_output/sam3_instances/manifest.json", 
-            nemotron_path="materials_v2_filtered.json"
+            manifest_path="data_output/sam3_instances_v2/manifest.json", 
+            nemotron_path="materials_full_filtered.json"
         )
 
     def init_ui(self):
@@ -70,7 +75,6 @@ class AnnotatorGUI(QMainWindow):
         self.combo_color = QComboBox()
         self.combo_color.addItems(COLORS)
         
-        # Connect comboboxes to the save function so they update memory in real-time
         self.combo_class.currentTextChanged.connect(self.update_annotation)
         self.combo_color.currentTextChanged.connect(self.update_annotation)
         
@@ -85,113 +89,153 @@ class AnnotatorGUI(QMainWindow):
         self.btn_save.setStyleSheet("background-color: #4CAF50; color: white; padding: 10px; font-weight: bold;")
         right_layout.addWidget(self.btn_save)
 
-        # Assemble Layout
         layout.addLayout(left_layout, 2)
         layout.addLayout(center_layout, 5)
         layout.addLayout(right_layout, 2)
 
     def load_data(self, manifest_path, nemotron_path):
-        """Load and merge your SAM3 manifest and Nemotron predictions."""
         try:
             with open(manifest_path, 'r', encoding='utf-8') as f:
                 self.manifest_data = json.load(f)
                 
             with open(nemotron_path, 'r', encoding='utf-8') as f:
                 full_nemotron = json.load(f)
-                # Keep the meta section for when we save later
                 self.nemotron_meta = full_nemotron.get("meta", {})
                 self.nemotron_data = full_nemotron.get("data", {})
 
             for item in self.manifest_data:
-                img_id = item.get("id", Path(item.get("image", "")).stem)
+                img_id = item.get("id", Path(normalize_path(item.get("rgb", item.get("image", "")))).stem)
                 self.image_list.addItem(img_id)
                 
         except Exception as e:
             QMessageBox.critical(self, "Error Loading Data", f"Failed to load JSON files:\n{e}")
 
-    def on_image_selected(self, item):
-        """Triggered when user clicks an image in the left list."""
-        img_id = item.text()
-        
-        # Find image in manifest
-        self.current_image_data = next((img for img in self.manifest_data if img.get("id", Path(img.get("image", "")).stem) == img_id), None)
-        
-        # Populate Mask List (Right Panel)
-        self.mask_list.clear()
-        if self.current_image_data:
-            # Add a composite view option at the very top
-            self.mask_list.addItem("👁️ View All Global Masks")
-            
-            # Add individual globals
-            for cls in ["road", "wall", "roof"]:
-                if f"{cls}_mask" in self.current_image_data.get("global", {}):
-                    self.mask_list.addItem(f"global_{cls}")
-            
-            # Add instances
-            for inst in self.current_image_data.get("instances", []):
-                bid = inst.get("id")
-                self.mask_list.addItem(f"{bid}_wall")
-                self.mask_list.addItem(f"{bid}_roof")
+    def get_image_path(self):
+        if not self.current_image_data: return None
+        raw_path = self.current_image_data.get("rgb", self.current_image_data.get("image", ""))
+        return normalize_path(raw_path)
 
-        # Show raw image initially
-        self.display_image(self.current_image_data["image"])
+    def match_manifest_instance(self, bid):
+        """Smart matcher to connect building_05 to building_005"""
+        instances = self.current_image_data.get("instances", [])
+        
+        # 1. Exact match
+        for inst in instances:
+            if inst.get("id") == bid:
+                return inst
+                
+        # 2. Smart numeric match (fixes 2-digit to 3-digit transition)
+        if bid.startswith("building_"):
+            try:
+                num = int(bid.split("_")[1])
+                for inst in instances:
+                    inst_id = inst.get("id", "")
+                    if inst_id.startswith("building_") and int(inst_id.split("_")[1]) == num:
+                        return inst
+            except ValueError:
+                pass
+        return None
+
+    def on_image_selected(self, item):
+        img_id = item.text()
+        self.current_image_data = next((img for img in self.manifest_data if img.get("id", Path(normalize_path(img.get("rgb", img.get("image", "")))).stem) == img_id), None)
+        
+        self.mask_list.clear()
+        if not self.current_image_data:
+            return
+
+        self.mask_list.addItem("👁️ View All Global Masks")
+        
+        for cls in ["road", "wall", "roof"]:
+            if f"{cls}_mask" in self.current_image_data.get("global", {}):
+                self.mask_list.addItem(f"global_{cls}")
+        
+        predictions = self.nemotron_data.get(img_id, {})
+        instances = predictions.get("instances", {})
+        
+        for bid, inst_data in sorted(instances.items()):
+            if bid.startswith("building"):
+                if "wall" in inst_data: self.mask_list.addItem(f"{bid}_wall")
+                if "roof" in inst_data: self.mask_list.addItem(f"{bid}_roof")
+            else:
+                self.mask_list.addItem(bid)
+
+        self.display_image(self.get_image_path())
         self.current_mask_id = None
 
     def on_mask_selected(self, item):
-        """Triggered when user clicks a specific mask."""
         mask_id = item.text()
         self.current_mask_id = mask_id
         
-        img_id = self.current_image_data.get("id", Path(self.current_image_data["image"]).stem)
-        img_path = self.current_image_data["image"]
+        img_id = self.current_image_data.get("id", Path(self.get_image_path()).stem)
+        img_path = self.get_image_path()
+        predictions = self.nemotron_data.get(img_id, {})
         
         # --- Handle "View All Global Masks" ---
         if mask_id == "👁️ View All Global Masks":
             masks_to_draw = []
             g_data = self.current_image_data.get("global", {})
-            if "road_mask" in g_data: masks_to_draw.append((g_data["road_mask"], [255, 215, 0])) # Yellow
-            if "wall_mask" in g_data: masks_to_draw.append((g_data["wall_mask"], [0, 255, 0]))   # Green
-            if "roof_mask" in g_data: masks_to_draw.append((g_data["roof_mask"], [0, 128, 255])) # Blue
+            if "road_mask" in g_data: masks_to_draw.append((normalize_path(g_data["road_mask"]), [255, 215, 0])) 
+            if "wall_mask" in g_data: masks_to_draw.append((normalize_path(g_data["wall_mask"]), [0, 255, 0]))   
+            if "roof_mask" in g_data: masks_to_draw.append((normalize_path(g_data["roof_mask"]), [0, 128, 255])) 
             
             self.display_multiple_overlays(img_path, masks_to_draw)
-            
-            # Disable editor (can't edit all 3 at once)
             self.combo_class.setEnabled(False)
             self.combo_color.setEnabled(False)
             return
 
-        # --- Handle Individual Masks ---
-        predictions = self.nemotron_data.get(img_id, {})
         target_pred = None
         mask_path = None
-        overlay_color = [255, 0, 0] # Default Red
+        overlay_color = [255, 0, 0]
         
         if mask_id.startswith("global_"):
             cls = mask_id.split("_")[1]
-            mask_path = self.current_image_data.get("global", {}).get(f"{cls}_mask")
             target_pred = predictions.get("global", {}).get(cls, {})
-            # Match colors
+            mask_path = self.current_image_data.get("global", {}).get(f"{cls}_mask") or target_pred.get("mask")
+            
             if cls == "road": overlay_color = [255, 215, 0]
             elif cls == "wall": overlay_color = [0, 255, 0]
             elif cls == "roof": overlay_color = [0, 128, 255]
             
         else:
-            parts = mask_id.rsplit('_', 1) 
-            bid, cls = parts[0], parts[1]
-            inst = next((i for i in self.current_image_data.get("instances", []) if i.get("id") == bid), None)
-            mask_path = inst.get(f"{cls}_mask") if inst else None
-            target_pred = predictions.get("instances", {}).get(bid, {}).get(cls, {})
-            # Match colors for instances too
-            if cls == "wall": overlay_color = [0, 255, 0]
-            elif cls == "roof": overlay_color = [0, 128, 255]
+            if mask_id.endswith("_wall") or mask_id.endswith("_roof"):
+                parts = mask_id.rsplit('_', 1) 
+                bid, cls = parts[0], parts[1]
+                target_pred = predictions.get("instances", {}).get(bid, {}).get(cls, {})
+                
+                # Use smart matcher to grab correct new path from manifest
+                inst_manifest = self.match_manifest_instance(bid)
+                
+                if inst_manifest and inst_manifest.get(f"{cls}_mask"):
+                    mask_path = inst_manifest.get(f"{cls}_mask")
+                else:
+                    # Fallback auto-fix path from old file
+                    mask_path = target_pred.get("mask")
+                    if mask_path:
+                        mask_path = mask_path.replace("sam3_instances/", "sam3_instances_v2/")
+                        if bid.startswith("building_"):
+                            num = int(bid.split("_")[1])
+                            mask_path = mask_path.replace(f"building_{num:02d}", f"building_{num:03d}")
+                            
+                if cls == "wall": overlay_color = [0, 255, 0]
+                elif cls == "roof": overlay_color = [0, 128, 255]
+            else:
+                bid = mask_id
+                target_pred = predictions.get("instances", {}).get(bid, {})
+                mask_path = target_pred.get("mask")
+                if bid.startswith("road"):
+                    overlay_color = [255, 0, 255]
+                else:
+                    overlay_color = [0, 255, 255]
 
-        # Render Overlay
+        mask_path = normalize_path(mask_path)
+
         if mask_path and Path(mask_path).exists():
             self.display_multiple_overlays(img_path, [(mask_path, overlay_color)])
         else:
             self.display_image(img_path)
 
-        # Populate Editor Comboboxes
+        # Editor
         self.combo_class.blockSignals(True)
         self.combo_color.blockSignals(True)
         
@@ -219,56 +263,49 @@ class AnnotatorGUI(QMainWindow):
         self.combo_color.blockSignals(False)
 
     def update_annotation(self):
-        """Saves combobox changes back to the in-memory nemotron dictionary."""
         if not self.current_image_data or not self.current_mask_id:
             return
             
-        img_id = self.current_image_data.get("id", Path(self.current_image_data["image"]).stem)
+        img_id = self.current_image_data.get("id", Path(self.get_image_path()).stem)
         
-        # Navigate to the correct prediction in our dictionary
         if self.current_mask_id.startswith("global_"):
             cls = self.current_mask_id.split("_")[1]
             target = self.nemotron_data.get(img_id, {}).get("global", {}).get(cls, {})
         else:
-            parts = self.current_mask_id.rsplit('_', 1) 
-            bid, cls = parts[0], parts[1]
-            target = self.nemotron_data.get(img_id, {}).get("instances", {}).get(bid, {}).get(cls, {})
+            if self.current_mask_id.endswith("_wall") or self.current_mask_id.endswith("_roof"):
+                parts = self.current_mask_id.rsplit('_', 1) 
+                bid, cls = parts[0], parts[1]
+                target = self.nemotron_data.get(img_id, {}).get("instances", {}).get(bid, {}).get(cls, {})
+            else:
+                bid = self.current_mask_id
+                target = self.nemotron_data.get(img_id, {}).get("instances", {}).get(bid, {})
 
-        # If it's a valid mask, update the material_descriptor
         if target and not target.get("skipped", True):
             if "material_descriptor" not in target:
                 target["material_descriptor"] = {}
                 
             target["material_descriptor"]["class"] = self.combo_class.currentText()
             target["material_descriptor"]["color"] = self.combo_color.currentText()
-            target["material_descriptor"]["confidence"] = 1.0  # Force confidence to 1.0 because a human verified it
+            target["material_descriptor"]["confidence"] = 1.0  
 
     def display_image(self, img_path):
-        """Load and scale RGB image to center panel."""
-        if not Path(img_path).exists():
-            self.image_label.setText("Image not found on disk.")
+        if not img_path or not Path(img_path).exists():
+            self.image_label.setText(f"Image not found:\n{img_path}")
             return
         pixmap = QPixmap(img_path)
         self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def display_multiple_overlays(self, img_path, masks_data):
-        """
-        Blend multiple binary masks over the RGB image.
-        masks_data is a list of tuples: [(mask_path, [R, G, B]), ...]
-        """
-        if not Path(img_path).exists():
-            self.image_label.setText("Image not found on disk.")
+        if not img_path or not Path(img_path).exists():
+            self.image_label.setText(f"Image not found:\n{img_path}")
             return
             
-        # Load base image
-        from PIL import Image
         img_pil = Image.open(img_path).convert("RGB")
         img_np = np.array(img_pil)
-        
         alpha = 0.5
         
         for mask_path, color_rgb in masks_data:
-            if not Path(mask_path).exists():
+            if not mask_path or not Path(mask_path).exists():
                 continue
                 
             mask_pil = Image.open(mask_path).convert("L")
@@ -278,41 +315,30 @@ class AnnotatorGUI(QMainWindow):
             mask_np = np.array(mask_pil)
             mask_indices = mask_np > 127
             
-            # Create a color layer for this specific mask
             colored_mask = np.zeros_like(img_np)
             colored_mask[:, :] = color_rgb
             
-            # Blend it
             img_np[mask_indices] = (img_np[mask_indices] * (1 - alpha) + colored_mask[mask_indices] * alpha).astype(np.uint8)
         
-        # Convert back to PyQt format
         h, w, ch = img_np.shape
         bytes_per_line = ch * w
         q_img = QImage(img_np.data, w, h, bytes_per_line, QImage.Format_RGB888).copy()
         
         self.image_label.setPixmap(QPixmap.fromImage(q_img).scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
-        
     def save_ground_truth(self):
-        """Save annotations to JSON, removing the 'global' sections."""
-        # Build the final output structure
         output_data = {
             "meta": self.nemotron_meta,
             "data": {}
         }
         
-        # Add a note that this is Human GT
-        output_data["meta"]["version"] = "v2.1_filtered_HUMAN_GT"
+        output_data["meta"]["version"] = "v3.0_merged_HUMAN_GT"
         output_data["meta"]["note"] = "Human-verified Ground Truth (Global sections removed)"
         
         for img_id, img_data in self.nemotron_data.items():
-            # Deep copy so we don't delete 'global' from the active GUI session
             clean_img_data = copy.deepcopy(img_data)
-            
-            # Remove the 'global' dictionary as requested
             if "global" in clean_img_data:
                 del clean_img_data["global"]
-                
             output_data["data"][img_id] = clean_img_data
             
         out_path = Path("ground_truth_eval.json")

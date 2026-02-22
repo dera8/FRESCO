@@ -13,17 +13,19 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION & PATHS
 # ==========================================
 GT_JSON_PATH = "ground_truth_eval.json"
-PRED_JSON_PATH = "materials_v2_filtered.json"
+PRED_JSON_PATH = "materials_full_filtered.json" # <--- FIXED HERE
 BASELINE_JSON_PATH = "baseline_full_image.json"
 
-CLASSES_TO_EVAL = ["wall", "roof", "road"]
+CLASSES_TO_EVAL = ["wall", "roof", "road", "sidewalk"]
 
 # ==========================================
 # UTILS
 # ==========================================
 def load_mask(path_str):
     if not path_str: return None
-    p = Path(path_str)
+    # Fix Windows backslashes for Linux environments
+    clean_path = str(path_str).replace('\\', '/')
+    p = Path(clean_path)
     if not p.exists(): return None
     m = np.array(Image.open(p).convert("L"))
     return (m > 127)
@@ -45,6 +47,26 @@ def extract_material(data_node):
     if not data_node or data_node.get("skipped", True):
         return None
     return data_node.get("material_descriptor", {}).get("class", "unknown")
+
+def get_struct_items(data_node, is_global=False):
+    """Smartly parses the JSON node to group items by their structural type."""
+    items = defaultdict(list)
+    if not data_node: return items
+    
+    if is_global:
+        for struct in CLASSES_TO_EVAL:
+            if struct in data_node:
+                items[struct].append(data_node[struct])
+    else:
+        for bid, inst_data in data_node.items():
+            if bid.startswith("building"):
+                if "wall" in inst_data: items["wall"].append(inst_data["wall"])
+                if "roof" in inst_data: items["roof"].append(inst_data["roof"])
+            elif bid.startswith("road"):
+                items["road"].append(inst_data)
+            elif bid.startswith("sidewalk"):
+                items["sidewalk"].append(inst_data)
+    return items
 
 # ==========================================
 # MAIN EXECUTION
@@ -68,62 +90,69 @@ def main():
         base_img = base_data.get(img_id, {})
         pred_img = pred_data.get(img_id, {})
         
-        # Gather all GT objects (both instances and global items like road)
-        gt_objects = list(gt_img.get("instances", {}).values())
-        if "global" in gt_img:
-            gt_objects.append(gt_img["global"])
+        # 1. Parse GT objects
+        # FIX: We ONLY pull from instances to ensure GT is strictly instance-based!
+        gt_items = get_struct_items(gt_img.get("instances", {}), is_global=False)
+            
+        # 2. Parse Prediction objects
+        pred_items_glob = get_struct_items(pred_img.get("global", {}), is_global=True)
+        pred_items_inst = get_struct_items(pred_img.get("instances", {}), is_global=False)
             
         # ==========================================
-        # 1. CLASSIFICATION EVALUATION
+        # CLASSIFICATION EVALUATION
         # ==========================================
-        for obj_gt in gt_objects:
-            for struct in CLASSES_TO_EVAL:
-                gt_mat = extract_material(obj_gt.get(struct))
+        for struct in CLASSES_TO_EVAL:
+            for obj_gt in gt_items[struct]:
+                gt_mat = extract_material(obj_gt)
                 if not gt_mat: continue 
                 
-                # Baseline Prediction (Image-level)
-                base_mat = base_img.get("canonicalized_predictions", {}).get(struct, {}).get("class", "unknown")
-                # Global Prediction (Image-level)
-                glob_mat = extract_material(pred_img.get("global", {}).get(struct)) or "unknown"
+                # Baseline Prediction (Image-level fallback)
+                base_target = "road" if struct == "sidewalk" else struct
+                base_mat = base_img.get("canonicalized_predictions", {}).get(base_target, {}).get("class", "unknown")
+                if base_mat is None: 
+                    base_mat = "unknown"
+                
+                # Global Prediction (Image-level fallback)
+                glob_objs = pred_items_glob[struct]
+                glob_mat = "unknown"
+                if glob_objs:
+                    extracted = extract_material(glob_objs[0])
+                    if extracted is not None:
+                        glob_mat = extracted
                 
                 y_true[struct].append(gt_mat)
                 y_base[struct].append(base_mat)
                 y_glob[struct].append(glob_mat)
 
         # ==========================================
-        # 2. SEGMENTATION EVALUATION
+        # SEGMENTATION EVALUATION
         # ==========================================
         for struct in CLASSES_TO_EVAL:
-            gt_materials_present = set(
-                extract_material(obj.get(struct)) for obj in gt_objects if extract_material(obj.get(struct))
-            )
+            gt_materials_present = set(extract_material(obj) for obj in gt_items[struct] if extract_material(obj))
             
             for mat in gt_materials_present:
-                # Build GT Mask
+                # Build GT Mask (Strictly from verified Instances)
                 gt_mask = None
-                for obj in gt_objects:
-                    if extract_material(obj.get(struct)) == mat:
-                        m = load_mask(obj[struct].get("mask"))
+                for obj in gt_items[struct]:
+                    if extract_material(obj) == mat:
+                        m = load_mask(obj.get("mask"))
                         if m is not None: gt_mask = m if gt_mask is None else np.logical_or(gt_mask, m)
                 
                 if gt_mask is None: continue
 
                 # Build Global Pred Mask
                 glob_mask = np.zeros_like(gt_mask)
-                if extract_material(pred_img.get("global", {}).get(struct)) == mat:
-                    m = load_mask(pred_img["global"][struct].get("mask"))
-                    if m is not None: glob_mask = m
+                for obj in pred_items_glob[struct]:
+                    if extract_material(obj) == mat:
+                        m = load_mask(obj.get("mask"))
+                        if m is not None: glob_mask = m if glob_mask is None else np.logical_or(glob_mask, m)
                 
                 # Build Instance Pred Mask
                 inst_mask = np.zeros_like(gt_mask)
-                for bid, inst_pred in pred_img.get("instances", {}).items():
-                    if extract_material(inst_pred.get(struct)) == mat:
-                        m = load_mask(inst_pred[struct].get("mask"))
+                for obj in pred_items_inst[struct]:
+                    if extract_material(obj) == mat:
+                        m = load_mask(obj.get("mask"))
                         if m is not None: inst_mask = m if inst_mask is None else np.logical_or(inst_mask, m)
-                # Also check global preds for things like roads in instances
-                if "global" in pred_img and extract_material(pred_img["global"].get(struct)) == mat:
-                    m = load_mask(pred_img["global"][struct].get("mask"))
-                    if m is not None: inst_mask = m if inst_mask is None else np.logical_or(inst_mask, m)
 
                 # Calculate Pixel Math
                 g_iou, g_f1 = get_iou_f1(glob_mask, gt_mask)
@@ -145,7 +174,6 @@ def main():
         if len(y_true[struct]) == 0: continue
         print(f"\n🏗️  --- {struct.upper()} (Total Valid Objects: {len(y_true[struct])}) ---")
         
-        # Macro Averages
         classes = sorted(list(set(y_true[struct])))
         P_b, R_b, F1_b, _ = precision_recall_fscore_support(y_true[struct], y_base[struct], labels=classes, zero_division=0, average='macro')
         P_g, R_g, F1_g, _ = precision_recall_fscore_support(y_true[struct], y_glob[struct], labels=classes, zero_division=0, average='macro')
@@ -156,7 +184,6 @@ def main():
         print(f"    BASELINE -> Acc: {acc_b:.2f} | Prec: {P_b:.2f} | Rec: {R_b:.2f} | F1: {F1_b:.2f}")
         print(f"    GLOBAL   -> Acc: {acc_g:.2f} | Prec: {P_g:.2f} | Rec: {R_g:.2f} | F1: {F1_g:.2f}")
         
-        # Per-Class Metrics
         P_bc, R_bc, F1_bc, S_c = precision_recall_fscore_support(y_true[struct], y_base[struct], labels=classes, zero_division=0)
         P_gc, R_gc, F1_gc, _   = precision_recall_fscore_support(y_true[struct], y_glob[struct], labels=classes, zero_division=0)
         
@@ -174,7 +201,6 @@ def main():
         if not seg_metrics[struct]: continue
         print(f"\n🏗️  --- {struct.upper()} ---")
         
-        # Calculate Macro Averages across all materials for this structure
         all_g_iou, all_g_f1, all_i_iou, all_i_f1 = [], [], [], []
         for mat, metrics in seg_metrics[struct].items():
             all_g_iou.extend(metrics["global_iou"])
