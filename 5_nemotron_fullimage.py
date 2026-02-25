@@ -209,7 +209,7 @@ def analyze_full_image(client, model, img_path: Path):
     
     # Canonicalize predictions
     canonicalized = {}
-    for cls in ["road", "wall", "roof"]:
+    for cls in ["road", "wall", "roof", "door", "window"]:
         if cls in parsed:
             raw_pred = parsed[cls]
             canonicalized[cls] = {
@@ -252,7 +252,7 @@ def main():
     
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     
-    results = {
+    """results = {
         "meta": {
             "method": "baseline_full_image",
             "model": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
@@ -261,7 +261,33 @@ def main():
             "source_manifest": str(manifest_path)
         },
         "data": {}
+    }"""
+
+    # --- SNIPPET 1: LOAD EXISTING PROGRESS ---
+    out_path = Path("data_output/baseline_full_image.json")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if out_path.exists():
+        print(f"🔄 Found existing output file at {out_path}. Loading progress...")
+        try:
+            with open(out_path, "r", encoding="utf-8") as f:
+                results = json.load(f)
+        except json.JSONDecodeError:
+            print("⚠️ Existing JSON is corrupted. Starting fresh.")
+            results = {"meta": {}, "data": {}}
+    else:
+        results = {"meta": {}, "data": {}}
+
+    results["meta"] = {
+        "method": "baseline_full_image",
+        "model": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+        "prompt_type": "unguided_multi_class",
+        "note": "No structural masks, analyzes full image at once",
+        "source_manifest": str(manifest_path)
     }
+    if "data" not in results:
+        results["data"] = {}
+    # -----------------------------------------
     
     skipped = 0
     processed = 0
@@ -270,6 +296,12 @@ def main():
     for i, item in enumerate(manifest, 1):
         # ✅ FIX: Safely check both keys and ensure it's a file
         img_id = item.get("id", f"image_{i}")
+
+        # --- SNIPPET 2: SKIP IF ALREADY DONE ---
+        if str(img_id) in results["data"]:
+            print(f"[{i}/{len(manifest)}] ⏭️ {img_id} (Already processed, skipping)")
+            continue
+        # ---------------------------------------
         
         # Grab the path string, fallback to "image" if "rgb" is missing
         raw_path_str = item.get("rgb") or item.get("image") or ""
@@ -297,7 +329,7 @@ def main():
             }
             
             # Print summary
-            for cls in ["road", "wall", "roof"]:
+            for cls in ["road", "wall", "roof", "door", "window"]:
                 mat = canon_pred[cls]["class"]
                 conf = canon_pred[cls]["confidence"]
                 print(f"   {cls}: {mat} (conf={conf:.2f})")
@@ -311,9 +343,13 @@ def main():
                 "rgb": str(rgb_path),
                 "error": str(e)
             }
+        
+        # --- SNIPPET 3: SAVE AFTER EVERY IMAGE ---
+        out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+        # -----------------------------------------
     
     # Save results
-    out_path = Path("data_output/baseline_full_image.json")
+    out_path = Path("baseline_full_image.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     

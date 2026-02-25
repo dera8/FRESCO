@@ -103,8 +103,8 @@ AGING_VOCAB = {
 
 CONF_TEXT_TO_NUM = {"high": 0.85, "medium": 0.55, "low": 0.25}
 
-CLASSES_GLOBAL = ["road", "wall", "roof"]
-CLASSES_BUILDING = ["wall", "roof"]
+CLASSES_GLOBAL = ["road", "wall", "roof", "door", "window"]
+CLASSES_BUILDING = ["wall", "roof", "door", "window"]
 
 
 # ============================================================
@@ -362,7 +362,7 @@ def masked_crop_from_mask(
         return {"coverage_pct": round(coverage_pct, 3), "skipped": True, "reason": "empty_mask"}
 
     # ✅ FIX 2: Adaptive padding based on structure class
-    if structure_class == "roof":
+    if structure_class in ["roof", "door", "window"]:
         effective_pad = max(8, crop_pad // 3)  # Roof: tight crop (8px min)
     elif structure_class == "wall":
         effective_pad = max(12, crop_pad // 2)  # Wall: medium crop (12px min)
@@ -529,13 +529,39 @@ def main():
             "per_building": bool(args.per_building),
             "crop_pad": args.crop_pad,
             "min_crop_side": args.min_crop_side,
-            "version": "v2.1_filtered",  # Mark this as improved version
+            "version": "v3.0",  # Mark this as improved version
         },
         "data": {}
     }
 
+    out_path = Path(args.out_json)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # --- SNIPPET 1: LOAD EXISTING PROGRESS ---
+    if out_path.exists():
+        print(f"🔄 Found existing output file at {out_path}. Loading progress...")
+        try:
+            with open(out_path, "r", encoding="utf-8") as f:
+                results = json.load(f)
+        except json.JSONDecodeError:
+            print("⚠️ Existing JSON is corrupted. Starting fresh.")
+            #results = {"meta": {}, "data": {}}
+    #else:
+    #    results = {"meta": {}, "data": {}}
+
+    results["meta"]["version"] = "v3.0"
+    results["meta"]["manifest"] = str(manifest_path)
+    if "data" not in results:
+        results["data"] = {}
+    # -----------------------------------------
+
     for i, item in enumerate(data, 1):
         img_id = item.get("id") or Path(item.get("rgb", item.get("image", ""))).stem
+        # --- SNIPPET 2: SKIP IF ALREADY DONE ---
+        if str(img_id) in results["data"]:
+            print(f"[{i}/{len(data)}] ⏭️ {img_id} (Already processed, skipping)")
+            continue
+        # ---------------------------------------
         rgb_path = Path(item.get("rgb") or item.get("image") or "")
         if not rgb_path.exists():
             print(f"[{i}/{len(data)}] ⚠️ missing rgb: {rgb_path} (skip)")
@@ -559,7 +585,7 @@ def main():
             cov = float(m.mean() * 100.0)
             
             # ✅ FIX 1: Different coverage threshold for roof
-            min_threshold = args.min_cov_roof if cls == "roof" else args.min_cov
+            min_threshold = args.min_cov_roof if cls in ["roof", "window", "door"] else args.min_cov
             
             if cov < min_threshold:
                 per_global[cls] = {
@@ -585,9 +611,9 @@ def main():
                 descriptor = make_descriptor(parsed_json, args.canon_mode)
 
                 # ✅ FIX 3: Post-filter low-confidence roof predictions
-                if cls == "roof" and descriptor["confidence"] < args.roof_conf_threshold:
+                if cls in ["roof", "window", "door"] and descriptor["confidence"] < args.roof_conf_threshold:
                     original_class = descriptor["class"]
-                    descriptor["class"] = "other:uncertain_roof"
+                    descriptor["class"] = f"other:uncertain_{cls}"
                     descriptor["filtered"] = True
                     descriptor["original_class"] = original_class
                     descriptor["filter_reason"] = f"Low confidence ({descriptor['confidence']:.2f} < {args.roof_conf_threshold})"
@@ -647,7 +673,7 @@ def main():
                         continue
 
                     # Per-building: default uses --min_cov_building; you can override roof via --min_cov_roof_building
-                    min_threshold = (args.min_cov_roof_building if (cls == "roof" and args.min_cov_roof_building is not None) else args.min_cov_building)
+                    min_threshold = (args.min_cov_roof_building if (cls in ["roof", "window", "door"] and args.min_cov_roof_building is not None) else args.min_cov_building)
                     
                     if cov < min_threshold:
                         per_inst_cls[cls] = {
@@ -673,9 +699,9 @@ def main():
                         descriptor = make_descriptor(parsed_json, args.canon_mode)
 
                         # ✅ FIX 3: Filter low-confidence building roofs
-                        if cls == "roof" and descriptor["confidence"] < args.roof_conf_threshold:
+                        if cls in ["roof", "window", "door"] and descriptor["confidence"] < args.roof_conf_threshold:
                             original_class = descriptor["class"]
-                            descriptor["class"] = "other:uncertain_roof"
+                            descriptor["class"] = f"other:uncertain_{cls}"
                             descriptor["filtered"] = True
                             descriptor["original_class"] = original_class
                             descriptor["filter_reason"] = f"Low confidence ({descriptor['confidence']:.2f} < {args.roof_conf_threshold})"
@@ -711,6 +737,9 @@ def main():
             "global": per_global,
             "instances": per_instances if args.per_building else {},
         }
+        # --- SNIPPET 3: SAVE AFTER EVERY IMAGE ---
+        out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+        # -----------------------------------------
 
     out_path = Path(args.out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)

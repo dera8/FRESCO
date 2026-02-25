@@ -3,3 +3,4 @@ __pycache__/
 .env
 data_output/*
 photos/*
+zest_code/*

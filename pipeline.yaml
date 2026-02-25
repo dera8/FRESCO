@@ -34,6 +34,15 @@ sam3:
       - "building roof"
       - "roof"
 
+    window:
+      - "window"
+      - "glass window"
+
+    door:
+      - "door"
+      - "entrance"
+      - "building door"
+
     road:
       - "road"
       - "street"
@@ -82,7 +91,7 @@ nemotron_structured:
 
   manifest: "{output_root}/sam3_instances/manifest.json"
   masked_dir: "{output_root}/masked_rgb"
-  out_json: materials_v2_filtered.json
+  out_json: materials_full_filtered.json
 
   # Coverage thresholds
   min_cov: 1.0
@@ -118,6 +127,18 @@ validation:
   enabled: true
   script: validator.py
 
-  structured_json: materials_v2_filtered.json
+  structured_json: materials_full_filtered.json
   baseline_json: baseline_full_image.json
   out_csv: "{output_root}/validation_results/report.csv"
+
+annotations:
+  enabled: true
+  script: gui_annotator.py
+
+metrics:
+  enabled: true
+  script: 6_evaluate_metrics.py
+
+material_replacement:
+  enabled: true
+  script: 8_zest_evaluator.py

@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import torch
+from tqdm import tqdm
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -20,10 +21,13 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 SCORE_THR = 0.6
 MASK_THR  = 0.5
 
+# 1. Added window and door to the global prompts
 PROMPTS = {
     "building": ["building"],
     "wall": ["building facade", "wall", "building front"],
     "roof": ["building roof", "roof"],
+    "window": ["window", "glass window"],
+    "door": ["door", "entrance", "building door"]
 }
 
 ROAD_PROMPTS_MAIN = [
@@ -137,7 +141,7 @@ def parse_args():
         "--images-dir",
         type=str,
         required=True,
-        help="Folder containing frames (png/jpg). Example: C:\\Users\\Debora\\Desktop\\bryggenn\\v3\\data_input\\images"
+        help="Folder containing frames (png/jpg)."
     )
     ap.add_argument("--out-dir", type=str, default="data_output/sam3_instances", help="Output directory.")
     ap.add_argument("--pattern", type=str, default="*.png", help="Glob pattern: '*.png' or '*.jpg' etc.")
@@ -170,18 +174,13 @@ def main():
     else:
         image_paths = sorted(images_dir.glob(args.pattern))
 
-    # If user has mixed formats, a common pattern is "*" and filter suffixes.
-    # But we keep it simple and configurable via --pattern.
     image_paths = [p for p in image_paths if p.is_file()]
 
     if args.limit and args.limit > 0:
         image_paths = image_paths[:args.limit]
 
     if len(image_paths) == 0:
-        raise RuntimeError(
-            f"No images found in {images_dir} with pattern '{args.pattern}'. "
-            f"Try --pattern \"*.jpg\" or --pattern \"*.*\" --recursive"
-        )
+        raise RuntimeError(f"No images found in {images_dir} with pattern '{args.pattern}'.")
 
     print(f"🖼️  Found {len(image_paths)} images in: {images_dir}")
     print("🔄 Loading SAM3...")
@@ -194,11 +193,10 @@ def main():
     model.eval()
 
     print(f"✅ SAM3 ready | device={DEVICE} | dtype={next(model.parameters()).dtype}")
-    print(f"⚙️  score_thr={SCORE_THR} | mask_thr={MASK_THR} | road_debug={SAVE_ROAD_DEBUG_PER_PROMPT}")
 
     manifest_out = []
 
-    for img_path in image_paths:
+    for img_path in tqdm(image_paths):
         print(f"\n📸 Processing {img_path.name}")
 
         try:
@@ -207,7 +205,7 @@ def main():
             print(f"⚠️  Skipping (cannot open): {img_path} | {e}")
             continue
 
-        W, H = img.size  # PIL: (W,H)
+        W, H = img.size 
 
         img_dir = out_dir / img_path.stem
         img_dir.mkdir(parents=True, exist_ok=True)
@@ -218,10 +216,11 @@ def main():
             "instances": []
         }
 
-        # ---------- GLOBAL STRUCTURAL MASKS: WALL / ROOF ----------
+        # ---------- GLOBAL STRUCTURAL MASKS: WALL, ROOF, WINDOW, DOOR ----------
         structural_masks = {}
 
-        for cls in ["wall", "roof"]:
+        # 2. Included window and door in the global generation loop
+        for cls in ["wall", "roof", "window", "door"]:
             prompts = PROMPTS[cls]
             m_u8, _ = union_from_prompts(
                 img, prompts, H, W,
@@ -270,15 +269,13 @@ def main():
         entry["global"]["road_mask"] = str(road_path)
         entry["global"]["road_coverage_pct"] = round(road_cov, 3)
         entry["global"]["road_prompts_used"] = used_prompts
-        if SAVE_ROAD_DEBUG_PER_PROMPT:
-            entry["global"]["road_prompt_masks"] = road_prompt_outputs
 
         # ---------- BUILDING INSTANCES ----------
         building_prompt = PROMPTS["building"][0]
         building_res = run_sam3_instance(img, building_prompt, processor, model, DEVICE)
 
-        building_masks = building_res.get("masks", None)    # [N,H,W]
-        building_scores = building_res.get("scores", None)  # [N]
+        building_masks = building_res.get("masks", None)    
+        building_scores = building_res.get("scores", None)  
 
         n_buildings = 0 if building_masks is None else len(building_masks)
         print(f"🏢 Found {n_buildings} buildings")
@@ -294,13 +291,27 @@ def main():
                 building_path = bdir / "building.png"
                 save_mask(bmask_u8, building_path)
 
+                # 3. Intersect all architectural details with the building
                 wall_mask = intersect_u8(bmask_u8, structural_masks["wall"])
                 roof_mask = intersect_u8(bmask_u8, structural_masks["roof"])
+                window_mask = intersect_u8(bmask_u8, structural_masks["window"])
+                door_mask = intersect_u8(bmask_u8, structural_masks["door"])
 
+                # 4. SUBTRACT windows and doors from the wall mask to create a pure wall
+                exclusion_zone = np.logical_or(window_mask > 0, door_mask > 0)
+                pure_wall_mask = np.logical_and(wall_mask > 0, ~exclusion_zone).astype(np.uint8) * 255
+
+                # Paths
                 wall_path = bdir / "wall.png"
                 roof_path = bdir / "roof.png"
-                save_mask(wall_mask, wall_path)
+                window_path = bdir / "window.png"
+                door_path = bdir / "door.png"
+
+                # Save Masks
+                save_mask(pure_wall_mask, wall_path) # Saves the pure, windowless mask as "wall.png"
                 save_mask(roof_mask, roof_path)
+                save_mask(window_mask, window_path)
+                save_mask(door_mask, door_path)
 
                 score_i = float(building_scores[i].detach().cpu().item()) if building_scores is not None else 0.0
 
@@ -310,10 +321,45 @@ def main():
                     "building_mask": str(building_path),
                     "wall_mask": str(wall_path),
                     "roof_mask": str(roof_path),
-                    "wall_coverage_pct": round(coverage_pct(wall_mask), 3),
-                    "roof_coverage_pct": round(coverage_pct(roof_mask), 3)
+                    "window_mask": str(window_path),
+                    "door_mask": str(door_path),
+                    "wall_coverage_pct": round(coverage_pct(pure_wall_mask), 3),
+                    "roof_coverage_pct": round(coverage_pct(roof_mask), 3),
+                    "window_coverage_pct": round(coverage_pct(window_mask), 3),
+                    "door_coverage_pct": round(coverage_pct(door_mask), 3)
                 })
 
+        # ---------- ROAD INSTANCES ----------
+        road_prompt = ROAD_PROMPTS_MAIN[0]
+        road_res = run_sam3_instance(img, road_prompt, processor, model, DEVICE)
+
+        road_inst_masks = road_res.get("masks", None)
+        road_scores = road_res.get("scores", None)
+
+        n_roads = 0 if road_inst_masks is None else len(road_inst_masks)
+        print(f"🛣️ Found {n_roads} road instances")
+
+        if road_inst_masks is not None and n_roads > 0:
+            for i in range(n_roads):
+                rmask_u8 = to_u8(road_inst_masks[i].detach().cpu().numpy())
+
+                rid = f"road_{i:02d}"
+                rdir = img_dir / rid
+                rdir.mkdir(parents=True, exist_ok=True)
+
+                road_inst_path = rdir / "road.png"
+                save_mask(rmask_u8, road_inst_path)
+
+                score_i = float(road_scores[i].detach().cpu().item()) if road_scores is not None else 0.0
+
+                entry["instances"].append({
+                    "id": rid,
+                    "score": score_i,
+                    "road_mask": str(road_inst_path),
+                    "road_coverage_pct": round(coverage_pct(rmask_u8), 3)
+                })
+        # ------------------------------------
+        
         manifest_out.append(entry)
 
     manifest_path = out_dir / "manifest.json"
@@ -322,7 +368,6 @@ def main():
     print("\n🎉 DONE")
     print(f"📄 Manifest: {manifest_path}")
     print(f"🗂️  Output folder: {out_dir}")
-
 
 if __name__ == "__main__":
     main()

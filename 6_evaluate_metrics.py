@@ -13,10 +13,10 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION & PATHS
 # ==========================================
 GT_JSON_PATH = "ground_truth_eval.json"
-PRED_JSON_PATH = "materials_full_filtered.json" # <--- FIXED HERE
+PRED_JSON_PATH = "materials_full_filtered.json"
 BASELINE_JSON_PATH = "baseline_full_image.json"
 
-CLASSES_TO_EVAL = ["wall", "roof", "road", "sidewalk"]
+CLASSES_TO_EVAL = ["wall", "roof", "road", "door", "window"]
 
 # ==========================================
 # UTILS
@@ -62,6 +62,8 @@ def get_struct_items(data_node, is_global=False):
             if bid.startswith("building"):
                 if "wall" in inst_data: items["wall"].append(inst_data["wall"])
                 if "roof" in inst_data: items["roof"].append(inst_data["roof"])
+                if "door" in inst_data: items["door"].append(inst_data["door"])
+                if "roof" in inst_data: items["window"].append(inst_data["window"])
             elif bid.startswith("road"):
                 items["road"].append(inst_data)
             elif bid.startswith("sidewalk"):
