@@ -15,6 +15,13 @@ MATERIALS = ["asphalt", "concrete", "brick", "stone", "wood", "plaster",
              "glass", "metal", "painted_surface", "tile", "slate", "shingles", "unknown"]
 COLORS = ["black", "gray", "white", "red", "brown", "yellow", 
           "blue", "green", "beige", "orange", "unknown"]
+MASK_COLORS = {
+    "road": [255, 215, 0],
+    "wall": [0, 255, 0],
+    "roof": [0, 128, 255],
+    "door": [0, 0, 255],
+    "window": [255, 0, 128]
+}
 
 def normalize_path(path_str):
     """Convert Windows paths to Linux paths safely."""
@@ -37,7 +44,7 @@ class AnnotatorGUI(QMainWindow):
         
         # NOTE: Make sure these point to your merged JSON!
         self.load_data(
-            manifest_path="data_output/sam3_instances_v2/manifest.json", 
+            manifest_path="data_output/sam3_instances/manifest.json", 
             nemotron_path="materials_full_filtered.json"
         )
 
@@ -146,7 +153,7 @@ class AnnotatorGUI(QMainWindow):
 
         self.mask_list.addItem("👁️ View All Global Masks")
         
-        for cls in ["road", "wall", "roof"]:
+        for cls in ["road", "wall", "roof", "door", "window"]:
             if f"{cls}_mask" in self.current_image_data.get("global", {}):
                 self.mask_list.addItem(f"global_{cls}")
         
@@ -157,6 +164,7 @@ class AnnotatorGUI(QMainWindow):
             if bid.startswith("building"):
                 if "wall" in inst_data: self.mask_list.addItem(f"{bid}_wall")
                 if "roof" in inst_data: self.mask_list.addItem(f"{bid}_roof")
+                if "door" in inst_data: self.mask_list.addItem(f"{bid}_door")
             else:
                 self.mask_list.addItem(bid)
 
@@ -175,9 +183,11 @@ class AnnotatorGUI(QMainWindow):
         if mask_id == "👁️ View All Global Masks":
             masks_to_draw = []
             g_data = self.current_image_data.get("global", {})
-            if "road_mask" in g_data: masks_to_draw.append((normalize_path(g_data["road_mask"]), [255, 215, 0])) 
-            if "wall_mask" in g_data: masks_to_draw.append((normalize_path(g_data["wall_mask"]), [0, 255, 0]))   
-            if "roof_mask" in g_data: masks_to_draw.append((normalize_path(g_data["roof_mask"]), [0, 128, 255])) 
+            if "road_mask" in g_data: masks_to_draw.append((normalize_path(g_data["road_mask"]), MASK_COLORS["road"])) 
+            if "wall_mask" in g_data: masks_to_draw.append((normalize_path(g_data["wall_mask"]), MASK_COLORS["wall"]))   
+            if "roof_mask" in g_data: masks_to_draw.append((normalize_path(g_data["roof_mask"]), MASK_COLORS["roof"])) 
+            if "door_mask" in g_data: masks_to_draw.append((normalize_path(g_data["door_mask"]), MASK_COLORS["door"])) 
+            if "window_mask" in g_data: masks_to_draw.append((normalize_path(g_data["window_mask"]), MASK_COLORS["window"])) 
             
             self.display_multiple_overlays(img_path, masks_to_draw)
             self.combo_class.setEnabled(False)
@@ -193,12 +203,14 @@ class AnnotatorGUI(QMainWindow):
             target_pred = predictions.get("global", {}).get(cls, {})
             mask_path = self.current_image_data.get("global", {}).get(f"{cls}_mask") or target_pred.get("mask")
             
-            if cls == "road": overlay_color = [255, 215, 0]
-            elif cls == "wall": overlay_color = [0, 255, 0]
-            elif cls == "roof": overlay_color = [0, 128, 255]
+            if cls == "road": overlay_color = MASK_COLORS["road"]
+            elif cls == "wall": overlay_color = MASK_COLORS["wall"]
+            elif cls == "roof": overlay_color = MASK_COLORS["roof"]
+            elif cls == "door": overlay_color = MASK_COLORS["door"]
+            elif cls == "window": overlay_color = MASK_COLORS["window"]
             
         else:
-            if mask_id.endswith("_wall") or mask_id.endswith("_roof"):
+            if mask_id.endswith("_wall") or mask_id.endswith("_roof") or mask_id.endswith("_door") or mask_id.endswith("_window"):
                 parts = mask_id.rsplit('_', 1) 
                 bid, cls = parts[0], parts[1]
                 target_pred = predictions.get("instances", {}).get(bid, {}).get(cls, {})
@@ -212,13 +224,15 @@ class AnnotatorGUI(QMainWindow):
                     # Fallback auto-fix path from old file
                     mask_path = target_pred.get("mask")
                     if mask_path:
-                        mask_path = mask_path.replace("sam3_instances/", "sam3_instances_v2/")
+                        #mask_path = mask_path.replace("sam3_instances/", "sam3_instances_v2/")
                         if bid.startswith("building_"):
                             num = int(bid.split("_")[1])
                             mask_path = mask_path.replace(f"building_{num:02d}", f"building_{num:03d}")
                             
-                if cls == "wall": overlay_color = [0, 255, 0]
-                elif cls == "roof": overlay_color = [0, 128, 255]
+                if cls == "wall": overlay_color = MASK_COLORS["wall"]
+                elif cls == "roof": overlay_color = MASK_COLORS["roof"]
+                elif cls == "door": overlay_color = MASK_COLORS["door"]
+                elif cls == "window": overlay_color = MASK_COLORS["window"]
             else:
                 bid = mask_id
                 target_pred = predictions.get("instances", {}).get(bid, {})
@@ -272,7 +286,7 @@ class AnnotatorGUI(QMainWindow):
             cls = self.current_mask_id.split("_")[1]
             target = self.nemotron_data.get(img_id, {}).get("global", {}).get(cls, {})
         else:
-            if self.current_mask_id.endswith("_wall") or self.current_mask_id.endswith("_roof"):
+            if self.current_mask_id.endswith("_wall") or self.current_mask_id.endswith("_roof") or self.current_mask_id.endswith("_door") or self.current_mask_id.endswith("_window"):
                 parts = self.current_mask_id.rsplit('_', 1) 
                 bid, cls = parts[0], parts[1]
                 target = self.nemotron_data.get(img_id, {}).get("instances", {}).get(bid, {}).get(cls, {})
