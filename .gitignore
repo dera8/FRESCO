@@ -4,3 +4,7 @@ __pycache__/
 data_output/*
 photos/*
 zest_code/*
+material_bank/*
+material_bank_exp
+material_bank_original
+colored_material_bank/*

@@ -218,13 +218,15 @@ def main():
         # ---------------------------------------------------------
         # SET YOUR TARGETS HERE BASED ON THE INVENTORY PRINTED ABOVE
         # ---------------------------------------------------------
-        target_material = "brick" 
-        target_color = "red"
+        target_material = "asphalt" 
+        target_color = "gray"
+        target_object = "road"
         # ---------------------------------------------------------
 
         target_mask, rgb_path, test_img_id, bid_name, struct_type = None, None, None, "", ""
         
         # 2. Select TARGET
+        """
         for img_id, data in gt_data.items():
             for bid, inst in data.get("instances", {}).items():
                 if "wall" in inst and not inst["wall"].get("skipped"):
@@ -235,10 +237,29 @@ def main():
                     struct_type = "wall"
                     break
             if target_mask: break
+        """
+        for img_id, data in gt_data.items():
+            for bid, inst in data.get("instances", {}).items():
+                if target_object in inst and not inst[target_object].get("skipped"):
+                    target_mask = "../" + inst[target_object]["mask"].replace('\\', '/')
+                    rgb_path = "../" + data["rgb"].replace('\\', '/')
+                    test_img_id = img_id
+                    bid_name = bid
+                    struct_type = target_object
+                    break
+                elif target_object in bid:
+                    target_mask = "../" + inst["mask"].replace('\\', '/')
+                    rgb_path = "../" + data["rgb"].replace('\\', '/')
+                    test_img_id = img_id
+                    bid_name = bid
+                    struct_type = target_object
+                    break
+            if target_mask: break
 
         if target_mask:
             print(f"\n🧪 Editing Target: {test_img_id} ({bid_name} {struct_type})")
             
+            """
             print(f"🔍 Searching dataset for the BIGGEST '{target_color} {target_material}' match...")
             ref_data = get_biggest_reference(gt_data, target_material, target_color, struct_type, test_img_id, bid_name)
             
@@ -251,9 +272,20 @@ def main():
             ref_rgb_path = ref_data["masked_rgb"]
             material_pil_img = crop_image_to_mask(ref_rgb_path)
             material_pil_img.save(OUTPUT_DIR / f"{test_img_id}_{bid_name}_OPTIMAL_REFERENCE.jpg")
+            """
+            REFERENCE_IMAGE_PATH = "../wet_asphalt.jpeg" 
+
+            print(f"🔍 Loading custom reference material from: {REFERENCE_IMAGE_PATH}")
+            if not Path(REFERENCE_IMAGE_PATH).exists():
+                print(f"❌ Custom reference image not found at: {REFERENCE_IMAGE_PATH}")
+                return
+            
+            # Load the user-provided reference image directly
+            material_pil_img = Image.open(REFERENCE_IMAGE_PATH).convert("RGB")
 
             # EXPLICITLY TELL THE AI THE MATERIAL AND COLOR
-            prompt = f"a highly detailed building facade made of {target_color} {target_material}, featuring glass windows, doors, and architectural outlines"
+            #prompt = f"a highly detailed building facade made of {target_color} {target_material}, featuring glass windows, doors, and architectural outlines"
+            prompt = f"a highly detailed {target_color} {target_material} wet {target_object}, harmonized with the environment and surrounding objects"
             
             run_ab_comparison(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, prompt, f"{test_img_id}_{bid_name}")
             
