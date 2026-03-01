@@ -1,0 +1,22 @@
+{
+    "metrics_explanation": {
+        "Background SSIM": "Higher is better. Measures how well the unedited background was preserved. (Max 1.0)",
+        "CLIP Alignment": "Higher is better. Measures how well the final image matches the requested material text prompt.",
+        "FID": "Lower is better. Measures overall realism compared to the original photos."
+    },
+    "naive_pipeline": {
+        "background_ssim": 0.318975559055042,
+        "clip_score": 23.37453372955322,
+        "fid_score": 205.32382202148438
+    },
+    "proposed_pipeline": {
+        "background_ssim": 0.8090244415426538,
+        "clip_score": 20.73022762298584,
+        "fid_score": 41.5203971862793
+    },
+    "improved_pipeline": {
+        "background_ssim": 0.9962734757991802,
+        "clip_score": 21.14941272735596,
+        "fid_score": 33.34511947631836
+    }
+}
