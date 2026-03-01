@@ -39,6 +39,23 @@ def resolve_path(path_str):
         return Path(path_str[3:])
     return Path(path_str)
 
+def get_masked_crop(img_pil, mask_np):
+    """Applies the mask (blacking out background) and crops to the bounding box for Local CLIP."""
+    img_array = np.array(img_pil)
+    # Black out the background (~mask_np means where mask is False)
+    img_array[~mask_np] = 0
+    
+    # Crop to the bounding box of the mask
+    coords = np.argwhere(mask_np)
+    if coords.size == 0:
+        return img_pil
+    
+    y0, x0 = coords.min(axis=0)
+    y1, x1 = coords.max(axis=0)
+    
+    cropped = img_array[y0:y1+1, x0:x1+1]
+    return Image.fromarray(cropped)
+
 def main():
     if not BENCHMARK_JSON_PATH.exists():
         raise FileNotFoundError(f"❌ {BENCHMARK_JSON_PATH} not found. Run generate_benchmark_set.py first!")
@@ -65,9 +82,9 @@ def main():
 
     # Score trackers
     results = {
-        "naive": {"bg_ssim": [], "clip_score": []},
-        "proposed": {"bg_ssim": [], "clip_score": []},
-        "improved": {"bg_ssim": [], "clip_score": []}
+        "naive": {"bg_ssim": [], "global_clip": [], "local_clip": []},
+        "proposed": {"bg_ssim": [], "global_clip": [], "local_clip": []},
+        "improved": {"bg_ssim": [], "global_clip": [], "local_clip": []}
     }
 
     print("\n🚀 Starting Evaluation...")
@@ -128,24 +145,37 @@ def main():
             results["improved"]["bg_ssim"].append(improved_ssim_map[bg_mask].mean())
 
         # ---------------------------------------------------------
-        # 3. CLIP Score (Text-to-Image Alignment)
+        # 3. CLIP Scores (Global AND Local Alignment)
         # ---------------------------------------------------------
         naive_img = Image.open(naive_path).convert("RGB")
         prop_img = Image.open(prop_path).convert("RGB")
         improved_img = Image.open(improved_path).convert("RGB")
 
-        with torch.no_grad():
-            # Naive CLIP
-            inputs_n = clip_processor(text=[prompt], images=naive_img, return_tensors="pt", padding=True).to(DEVICE)
-            results["naive"]["clip_score"].append(clip_model(**inputs_n).logits_per_image.item())
-            
-            # Proposed CLIP
-            inputs_p = clip_processor(text=[prompt], images=prop_img, return_tensors="pt", padding=True).to(DEVICE)
-            results["proposed"]["clip_score"].append(clip_model(**inputs_p).logits_per_image.item())
+        # Create localized versions for Masked CLIP
+        naive_local = get_masked_crop(naive_img, mask_np)
+        prop_local = get_masked_crop(prop_img, mask_np)
+        improved_local = get_masked_crop(improved_img, mask_np)
 
-            # Improved CLIP
+        with torch.no_grad():
+            # --- GLOBAL CLIP ---
+            inputs_n = clip_processor(text=[prompt], images=naive_img, return_tensors="pt", padding=True).to(DEVICE)
+            results["naive"]["global_clip"].append(clip_model(**inputs_n).logits_per_image.item())
+            
+            inputs_p = clip_processor(text=[prompt], images=prop_img, return_tensors="pt", padding=True).to(DEVICE)
+            results["proposed"]["global_clip"].append(clip_model(**inputs_p).logits_per_image.item())
+
             inputs_i = clip_processor(text=[prompt], images=improved_img, return_tensors="pt", padding=True).to(DEVICE)
-            results["improved"]["clip_score"].append(clip_model(**inputs_i).logits_per_image.item())
+            results["improved"]["global_clip"].append(clip_model(**inputs_i).logits_per_image.item())
+
+            # --- LOCAL (MASKED) CLIP ---
+            inputs_n_loc = clip_processor(text=[prompt], images=naive_local, return_tensors="pt", padding=True).to(DEVICE)
+            results["naive"]["local_clip"].append(clip_model(**inputs_n_loc).logits_per_image.item())
+            
+            inputs_p_loc = clip_processor(text=[prompt], images=prop_local, return_tensors="pt", padding=True).to(DEVICE)
+            results["proposed"]["local_clip"].append(clip_model(**inputs_p_loc).logits_per_image.item())
+
+            inputs_i_loc = clip_processor(text=[prompt], images=improved_local, return_tensors="pt", padding=True).to(DEVICE)
+            results["improved"]["local_clip"].append(clip_model(**inputs_i_loc).logits_per_image.item())
 
     # ==========================================
     # AGGREGATE AND PRINT RESULTS
@@ -163,40 +193,49 @@ def main():
     mean_prop_ssim = np.mean(results["proposed"]["bg_ssim"]) if results["proposed"]["bg_ssim"] else 0
     mean_improved_ssim = np.mean(results["improved"]["bg_ssim"]) if results["improved"]["bg_ssim"] else 0
 
-    mean_naive_clip = np.mean(results["naive"]["clip_score"]) if results["naive"]["clip_score"] else 0
-    mean_prop_clip = np.mean(results["proposed"]["clip_score"]) if results["proposed"]["clip_score"] else 0
-    mean_improved_clip = np.mean(results["improved"]["clip_score"]) if results["improved"]["clip_score"] else 0
+    mean_naive_gclip = np.mean(results["naive"]["global_clip"]) if results["naive"]["global_clip"] else 0
+    mean_prop_gclip = np.mean(results["proposed"]["global_clip"]) if results["proposed"]["global_clip"] else 0
+    mean_improved_gclip = np.mean(results["improved"]["global_clip"]) if results["improved"]["global_clip"] else 0
 
-    print("\n" + "="*80)
+    mean_naive_lclip = np.mean(results["naive"]["local_clip"]) if results["naive"]["local_clip"] else 0
+    mean_prop_lclip = np.mean(results["proposed"]["local_clip"]) if results["proposed"]["local_clip"] else 0
+    mean_improved_lclip = np.mean(results["improved"]["local_clip"]) if results["improved"]["local_clip"] else 0
+
+    print("\n" + "="*85)
     print(" 📊 EVALUATION RESULTS: NAIVE vs PROPOSED vs IMPROVED")
-    print("="*80)
+    print("="*85)
     print(f"{'Metric':<20} | {'Naive (Global)':<16} | {'Proposed (Masked)':<18} | {'Improved (Composited)':<22}")
-    print("-" * 80)
+    print("-" * 85)
     print(f"{'Bg SSIM (↑)':<20} | {mean_naive_ssim:^16.4f} | {mean_prop_ssim:^18.4f} | {mean_improved_ssim:^22.4f}")
-    print(f"{'CLIP Alignment (↑)':<20} | {mean_naive_clip:^16.2f} | {mean_prop_clip:^18.2f} | {mean_improved_clip:^22.2f}")
+    print(f"{'Global CLIP (↑)':<20} | {mean_naive_gclip:^16.2f} | {mean_prop_gclip:^18.2f} | {mean_improved_gclip:^22.2f}")
+    print(f"{'Masked CLIP (↑)':<20} | {mean_naive_lclip:^16.2f} | {mean_prop_lclip:^18.2f} | {mean_improved_lclip:^22.2f}")
     print(f"{'FID Realism (↓)':<20} | {final_fid_naive:^16.2f} | {final_fid_prop:^18.2f} | {final_fid_improved:^22.2f}")
-    print("="*80)
+    print("="*85)
 
     # Save quantitative results to JSON
     report = {
         "metrics_explanation": {
             "Background SSIM": "Higher is better. Measures how well the unedited background was preserved. (Max 1.0)",
-            "CLIP Alignment": "Higher is better. Measures how well the final image matches the requested material text prompt.",
+            "Global CLIP": "Higher is better, but can be misleading for local edits. Measures full-image alignment to text.",
+            "Masked CLIP": "Higher is better. Evaluates ONLY the targeted edit region. High scores prove localized precision.",
             "FID": "Lower is better. Measures overall realism compared to the original photos."
         },
         "naive_pipeline": {
             "background_ssim": float(mean_naive_ssim),
-            "clip_score": float(mean_naive_clip),
+            "global_clip_score": float(mean_naive_gclip),
+            "masked_clip_score": float(mean_naive_lclip),
             "fid_score": final_fid_naive
         },
         "proposed_pipeline": {
             "background_ssim": float(mean_prop_ssim),
-            "clip_score": float(mean_prop_clip),
+            "global_clip_score": float(mean_prop_gclip),
+            "masked_clip_score": float(mean_prop_lclip),
             "fid_score": final_fid_prop
         },
         "improved_pipeline": {
             "background_ssim": float(mean_improved_ssim),
-            "clip_score": float(mean_improved_clip),
+            "global_clip_score": float(mean_improved_gclip),
+            "masked_clip_score": float(mean_improved_lclip),
             "fid_score": final_fid_improved
         }
     }

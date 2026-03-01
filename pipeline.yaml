@@ -142,3 +142,7 @@ metrics:
 material_replacement:
   enabled: true
   script: 8_zest_evaluator.py
+
+nlp_material_replacement:
+  enabled: true
+  script: 9_nlp_zest_evaluator.py

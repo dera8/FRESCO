@@ -1,22 +1,26 @@
 {
     "metrics_explanation": {
         "Background SSIM": "Higher is better. Measures how well the unedited background was preserved. (Max 1.0)",
-        "CLIP Alignment": "Higher is better. Measures how well the final image matches the requested material text prompt.",
+        "Global CLIP": "Higher is better, but can be misleading for local edits. Measures full-image alignment to text.",
+        "Masked CLIP": "Higher is better. Evaluates ONLY the targeted edit region. High scores prove localized precision.",
         "FID": "Lower is better. Measures overall realism compared to the original photos."
     },
     "naive_pipeline": {
-        "background_ssim": 0.318975559055042,
-        "clip_score": 23.37453372955322,
-        "fid_score": 205.32382202148438
+        "background_ssim": 0.3223156362837924,
+        "global_clip_score": 25.315746574401857,
+        "masked_clip_score": 24.288228034973145,
+        "fid_score": 206.40379333496094
     },
     "proposed_pipeline": {
-        "background_ssim": 0.8090244415426538,
-        "clip_score": 20.73022762298584,
-        "fid_score": 41.5203971862793
+        "background_ssim": 0.8090222992095035,
+        "global_clip_score": 22.192885951995848,
+        "masked_clip_score": 24.897051582336427,
+        "fid_score": 40.97317886352539
     },
     "improved_pipeline": {
-        "background_ssim": 0.9962734757991802,
-        "clip_score": 21.14941272735596,
-        "fid_score": 33.34511947631836
+        "background_ssim": 0.9962805571311502,
+        "global_clip_score": 22.104029960632325,
+        "masked_clip_score": 24.96871006011963,
+        "fid_score": 32.91181182861328
     }
 }

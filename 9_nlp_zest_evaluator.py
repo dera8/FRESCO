@@ -17,6 +17,7 @@ import json
 import torch
 import numpy as np
 import gc
+import random
 from PIL import Image, ImageChops, ImageEnhance
 from pathlib import Path
 import httpx
@@ -27,9 +28,11 @@ from zest_code.ip_adapter import IPAdapterXL
 from zest_code.ip_adapter.utils import register_cross_attention_hook
 from transformers import pipeline
 from openai import OpenAI
+import argparse
 
 GT_PATH = "../ground_truth_eval.json" 
 OUTPUT_DIR = Path("../zest_nlp_results")
+MATERIAL_BANK_DIR = Path("../colored_material_bank")
 
 # ==========================================
 # 🧠 NLP PARSING & SPATIAL ANALYSIS
@@ -68,7 +71,6 @@ def parse_nlp_prompt(user_prompt, instances_info):
     if not api_key:
         raise SystemExit("❌ Missing NVIDIA_API_KEY env var for NLP parsing.")
 
-    # Your proven proxy bypass logic
     proxy_url = os.environ.get('http_proxy') or os.environ.get('HTTP_PROXY') or \
                 os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY')
     if proxy_url and not proxy_url.startswith('http'):
@@ -110,44 +112,44 @@ User Prompt: "{user_prompt}"
     return parsed
 
 # ==========================================
+# 🎨 MATERIAL BANK RETRIEVAL
+# ==========================================
+def get_material_from_bank(color, material):
+    """Fetches a high-quality reference texture from the generated material bank."""
+    if not MATERIAL_BANK_DIR.exists():
+        print(f"❌ Material bank missing at {MATERIAL_BANK_DIR}")
+        return None
+
+    # Determine folder name based on whether color was provided
+    if color and str(color).lower() not in ["none", "unknown", ""]:
+        target_folder_name = f"{color.lower()}_{material.lower()}"
+    else:
+        target_folder_name = f"original_{material.lower()}"
+        
+    target_folder = MATERIAL_BANK_DIR / target_folder_name
+    
+    # Fallback to original if the color combo doesn't exist
+    if not target_folder.exists():
+        print(f"⚠️ Warning: Folder '{target_folder_name}' not found. Falling back to original_{material.lower()}...")
+        target_folder = MATERIAL_BANK_DIR / f"original_{material.lower()}"
+        
+    if not target_folder.exists():
+        print(f"❌ Could not find any material textures for '{material}' in the bank!")
+        return None
+
+    # Gather images
+    images = list(target_folder.glob("*.jpg")) + list(target_folder.glob("*.jpeg")) + list(target_folder.glob("*.png"))
+    if not images:
+        print(f"❌ Folder '{target_folder.name}' is empty!")
+        return None
+
+    selected_image = random.choice(images)
+    print(f"✅ Loaded high-quality reference: {target_folder.name}/{selected_image.name}")
+    return Image.open(selected_image).convert("RGB")
+
+# ==========================================
 # 🖌️ ZEST PIPELINE FUNCTIONS
 # ==========================================
-
-def get_biggest_reference(gt_data, target_material, target_color, struct_type, exclude_img_id, exclude_bid):
-    best_candidate = None
-    max_area = -1
-    
-    for img_id, data in gt_data.items():
-        for bid, inst in data.get("instances", {}).items():
-            if img_id == exclude_img_id and bid == exclude_bid:
-                continue
-                
-            if struct_type in inst and not inst[struct_type].get("skipped"):
-                mat_desc = inst[struct_type].get("material_descriptor", {})
-                if mat_desc.get("class") == target_material and mat_desc.get("color") == target_color:
-                    mask_path = "../" + str(inst[struct_type].get("mask")).replace('\\', '/')
-                    rgb_path = "../" + str(data.get("rgb")).replace('\\', '/')
-                    masked_rgb_path = "../" + str(inst[struct_type].get("masked_rgb")).replace('\\', '/')
-                    
-                    if Path(mask_path).exists() and Path(rgb_path).exists():
-                        mask_np = np.array(Image.open(mask_path).convert("L")) > 127
-                        area = mask_np.sum()
-                        if area > max_area:
-                            max_area = area
-                            best_candidate = {
-                                "img_id": img_id, "bid": bid, "masked_rgb": masked_rgb_path
-                            }
-    return best_candidate
-
-def crop_image_to_mask(rgb_path):
-    img_pil = Image.open(rgb_path).convert("RGB")
-    img = np.array(img_pil)
-    mask = np.any(img > 10, axis=-1)
-    coords = np.argwhere(mask)
-    if coords.size == 0: return img_pil 
-    y0, x0 = coords.min(axis=0)
-    y1, x1 = coords.max(axis=0)
-    return Image.fromarray(img[y0:y1+1, x0:x1+1])
 
 def run_ab_comparison(ip_model, depth_estimator, rgb_path, mask_path, material_img, prompt, out_prefix):
     target_image = Image.open(rgb_path).convert('RGB').resize((1024, 1024))
@@ -198,7 +200,6 @@ def run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_img, prompt
     
     depth_image = depth_estimator(target_image)["depth"].convert("RGB").resize((1024, 1024))
     
-    # Since the mask is all white, init_img becomes the full grayscale target
     gray_target_image = target_image.convert('L').convert('RGB')
     init_img = ImageEnhance.Brightness(gray_target_image).enhance(1.0)
     
@@ -229,9 +230,12 @@ def main():
     # =========================================================
     # 🎯 DEFINE YOUR TARGET IMAGE AND NATURAL LANGUAGE PROMPT HERE
     # =========================================================
+    # Set up argument parsing
+    parser = argparse.ArgumentParser(description="Run ZEST with a natural language prompt.")
+    parser.add_argument("--prompt", type=str, required=True, help="The natural language edit prompt.")
+    args = parser.parse_args()
     TARGET_IMAGE_ID = "1003317145127470"  # Replace with the image ID you want to edit
-    #USER_PROMPT = "Change the wall of the biggest building on the right to white concrete"
-    USER_PROMPT = input("Enter your edit prompt (e.g., 'Change the wall of the biggest building on the right to white concrete'): ")
+    USER_PROMPT = args.prompt
     # =========================================================
 
     original_dir = os.getcwd()
@@ -270,15 +274,13 @@ def main():
         target_mask = "../" + inst_data["mask"].replace('\\', '/')
         rgb_path = "../" + gt_data[TARGET_IMAGE_ID]["rgb"].replace('\\', '/')
 
-        print(f"\n🔍 Searching dataset for reference image of '{target_color} {target_material}'...")
-        ref_data = get_biggest_reference(gt_data, target_material, target_color, target_struct, TARGET_IMAGE_ID, target_bid)
+        print(f"\n🔍 Retrieving reference image of '{target_color} {target_material}' from Material Bank...")
         
-        if not ref_data:
-            print(f"❌ Could not find any reference '{target_struct}' made of '{target_color} {target_material}' in dataset!")
-            return
-            
-        print(f"✅ Found Optimal Reference: {ref_data['img_id']} ({ref_data['bid']})")
-        
+        # Pull perfectly clean image from our generated folders
+        material_pil_img = get_material_from_bank(target_color, target_material)
+        if material_pil_img is None:
+            return # Script stops if material is totally missing
+
         print("\n⏳ Loading ZEST Models...")
         
         depth_estimator = pipeline("depth-estimation", model="Intel/dpt-hybrid-midas", device=0)
@@ -298,14 +300,10 @@ def main():
         print("🚀 All Pipelines Loaded.")
 
         # 4. Run the Edits
-        ref_rgb_path = ref_data["masked_rgb"]
-        material_pil_img = crop_image_to_mask(ref_rgb_path)
-        
         zest_prompt = f"a highly detailed building facade made of {target_color} {target_material}, featuring architectural outlines"
         out_prefix = f"{TARGET_IMAGE_ID}_{target_bid}"
         
         run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_pil_img, zest_prompt, out_prefix)
-
         run_ab_comparison(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, zest_prompt, out_prefix)
                 
         print(f"\n✅ Done! Check the {OUTPUT_DIR.name} folder for:")
