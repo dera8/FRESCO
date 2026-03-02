@@ -28,36 +28,67 @@ from transformers import pipeline
 GT_PATH = "../ground_truth_eval.json" 
 OUTPUT_DIR = Path("../zest_benchmark_results")
 BENCHMARK_JSON_PATH = Path("../benchmark_dataset.json")
+MATERIAL_BANK_DIR = Path("../colored_material_bank")
 
 # Number of images to generate for the evaluation benchmark
-NUM_SAMPLES = 50  
+NUM_SAMPLES = 300  
+
+# ==========================================
+# 🏛️ ARCHITECTURAL PLAUSIBILITY RULES
+# ==========================================
+PLAUSIBLE_COMBINATIONS = {
+    "brick": ["red", "brown", "white", "gray", "yellow", "black", "original"],
+    "concrete": ["gray", "white", "beige", "black", "original"],
+    "wood": ["brown", "beige", "white", "gray", "black", "red", "original"],
+    "plaster": ["white", "beige", "yellow", "gray", "red", "blue", "green", "orange", "original"], 
+    "metal": ["gray", "black", "white", "red", "blue", "green", "original"],
+    "shingles": ["black", "gray", "brown", "red", "green", "original"],
+    "asphalt": ["black", "gray", "original"],
+    "stone": ["gray", "brown", "beige", "black", "white", "original"],
+    "tile": ["white", "gray", "black", "blue", "green", "red", "brown", "yellow", "original"]
+}
+
+# ==========================================
+# LUMINANCE TRANSFER
+# ==========================================
+def apply_luminance_transfer(original_img, generated_img, blend_ratio=0.65):
+    """Transfers the macro-lighting (shadows/ambient occlusion) from the original photo to the generated texture."""
+    orig_np = np.array(original_img).astype(np.float32) / 255.0
+    gen_np = np.array(generated_img).astype(np.float32) / 255.0
+    
+    def get_lum(img_array):
+        return 0.299 * img_array[:,:,0] + 0.587 * img_array[:,:,1] + 0.114 * img_array[:,:,2]
+        
+    orig_lum = get_lum(orig_np)
+    gen_lum = get_lum(gen_np)
+    
+    orig_lum_pil = Image.fromarray((np.clip(orig_lum, 0, 1)*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(5))
+    gen_lum_pil = Image.fromarray((np.clip(gen_lum, 0, 1)*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(5))
+    
+    orig_lum_blur = np.array(orig_lum_pil).astype(np.float32) / 255.0
+    gen_lum_blur = np.array(gen_lum_pil).astype(np.float32) / 255.0
+    gen_lum_blur = np.clip(gen_lum_blur, 0.001, 1.0)
+    
+    ratio = np.expand_dims(orig_lum_blur / gen_lum_blur, axis=-1)
+    matched_np = np.clip(gen_np * ratio, 0, 1)
+    final_np = (gen_np * (1.0 - blend_ratio)) + (matched_np * blend_ratio)
+    
+    return Image.fromarray((final_np * 255).astype(np.uint8))
 
 # ==========================================
 # ZEST PIPELINE FUNCTIONS
 # ==========================================
-def crop_image_to_mask(rgb_path):
-    img_pil = Image.open(rgb_path).convert("RGB")
-    img = np.array(img_pil)
-    mask = np.any(img > 10, axis=-1)
-    coords = np.argwhere(mask)
-    if coords.size == 0: return img_pil 
-    y0, x0 = coords.min(axis=0)
-    y1, x1 = coords.max(axis=0)
-    return Image.fromarray(img[y0:y1+1, x0:x1+1])
 
 def run_proposed_pipeline(ip_model, depth_estimator, rgb_path, mask_path, material_img, prompt, out_prefix):
-    """Runs the ZEST pipeline using the structural mask."""
     target_image = Image.open(rgb_path).convert('RGB').resize((1024, 1024))
     target_image.save(OUTPUT_DIR / f"{out_prefix}_original.jpg")
 
     ip_image = material_img.convert('RGB').resize((224, 224))
     target_mask = Image.open(mask_path).convert("L").point(lambda x: 0 if x < 127 else 255).convert("RGB").resize((1024, 1024))
-    
     depth_image = depth_estimator(target_image)["depth"].convert("RGB").resize((1024, 1024))
     
     invert_target_mask = ImageChops.invert(target_mask)
     gray_target_image = target_image.convert('L').convert('RGB')
-    gray_target_image = ImageEnhance.Brightness(gray_target_image).enhance(1.0)
     grayscale_img = ImageChops.darker(gray_target_image, target_mask)
     img_black_mask = ImageChops.darker(target_image, invert_target_mask)
     init_img = ImageChops.lighter(img_black_mask, grayscale_img)
@@ -73,14 +104,10 @@ def run_proposed_pipeline(ip_model, depth_estimator, rgb_path, mask_path, materi
     )[0]
     out_path = OUTPUT_DIR / f"{out_prefix}_proposed.jpg"
     guided_result.save(out_path)
-    
-    del guided_result
-    gc.collect()
-    torch.cuda.empty_cache()
+    del guided_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
 
 def run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_img, prompt, out_prefix):
-    """Runs the ZEST pipeline globally (white mask) for baseline comparison."""
     target_image = Image.open(rgb_path).convert('RGB').resize((1024, 1024))
     ip_image = material_img.convert('RGB').resize((224, 224))
     
@@ -100,84 +127,48 @@ def run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_img, prompt
     )[0]
     out_path = OUTPUT_DIR / f"{out_prefix}_naive.jpg"
     naive_result.save(out_path)
-    
-    del naive_result
-    gc.collect()
-    torch.cuda.empty_cache()
+    del naive_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
 
 def run_improved_pipeline(ip_model, depth_estimator, rgb_path, mask_path, material_img, prompt, out_prefix):
-    """Improved pipeline: Adds mask feathering and pixel-perfect post-compositing to bypass VAE degradation."""
     target_image = Image.open(rgb_path).convert('RGB').resize((1024, 1024))
     ip_image = material_img.convert('RGB').resize((224, 224))
     
-    # 1. Mask Feathering (Gaussian Blur to soften edges)
     raw_mask = Image.open(mask_path).convert("L").point(lambda x: 0 if x < 127 else 255).resize((1024, 1024))
     feathered_mask = raw_mask.filter(ImageFilter.GaussianBlur(radius=5))
     
     depth_image = depth_estimator(target_image)["depth"].convert("RGB").resize((1024, 1024))
     
-    # Prepare init image using the feathered mask
     invert_feathered_mask = ImageChops.invert(feathered_mask)
     gray_target_image = target_image.convert('L').convert('RGB')
-    gray_target_image = ImageEnhance.Brightness(gray_target_image).enhance(1.0)
-    
     grayscale_img = Image.composite(gray_target_image, Image.new("RGB", (1024, 1024), "black"), feathered_mask)
     img_black_mask = Image.composite(target_image, Image.new("RGB", (1024, 1024), "black"), invert_feathered_mask)
     init_img = ImageChops.lighter(img_black_mask, grayscale_img)
     
-    negative_prompt = "blurry, lowres, flat, solid block, missing windows, smooth, loss of architectural details"
+    negative_prompt = "lowres, flat, solid block, missing windows, smooth, loss of architectural details"
 
-    print(f"    -> Generating Improved Edit (Feathering + Compositing)...")
+    print(f"    -> Generating Improved Edit (Lighting Match + Compositing)...")
     guided_result = ip_model.generate(
         pil_image=ip_image, num_samples=1, num_inference_steps=30, seed=42, 
         image=init_img, control_image=depth_image, mask_image=feathered_mask,         
         prompt=prompt, negative_prompt=negative_prompt, scale=1.0, 
-        controlnet_conditioning_scale=0.85, strength=0.9, 
+        controlnet_conditioning_scale=0.85, strength=0.85, 
     )[0]
     
-    # 2. Pixel-Perfect Post-Compositing
-    # Paste the generated SDXL pixels strictly back onto the pure original image using the feathered mask!
-    final_result = Image.composite(guided_result, target_image, feathered_mask)
+    lighting_matched = apply_luminance_transfer(target_image, guided_result, blend_ratio=0.65)
+    final_result = Image.composite(lighting_matched, target_image, feathered_mask)
     
     out_path = OUTPUT_DIR / f"{out_prefix}_improved.jpg"
     final_result.save(out_path)
-    
-    del guided_result, final_result
-    gc.collect()
-    torch.cuda.empty_cache()
+    del guided_result, lighting_matched, final_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
 
-def build_reference_pool(gt_data):
-    """Creates a catalog of valid materials we can use to drive the edits (buildings + roads)."""
-    pool = []
-    for img_id, data in gt_data.items():
-        for bid, inst in data.get("instances", {}).items():
-            # 1. Building Instances (Nested dictionary)
-            if bid.startswith("building_"):
-                for struct in ["wall", "roof", "door", "window"]:
-                    if struct in inst and not inst[struct].get("skipped"):
-                        desc = inst[struct].get("material_descriptor", {})
-                        c, m = desc.get("color", "unknown"), desc.get("class", "unknown")
-                        if c != "unknown" and m != "unknown":
-                            pool.append({
-                                "img_id": img_id, "bid": bid, "struct": struct,
-                                "color": c, "material": m, 
-                                "masked_rgb": "../" + str(inst[struct].get("masked_rgb")).replace('\\', '/')
-                            })
-            # 2. Road & Sidewalk Instances (Flat dictionary)
-            elif bid.startswith("road_") or bid.startswith("sidewalk_"):
-                if not inst.get("skipped"):
-                    struct = inst.get("type", bid.split("_")[0])
-                    desc = inst.get("material_descriptor", {})
-                    c, m = desc.get("color", "unknown"), desc.get("class", "unknown")
-                    if c != "unknown" and m != "unknown":
-                        pool.append({
-                            "img_id": img_id, "bid": bid, "struct": struct,
-                            "color": c, "material": m, 
-                            "masked_rgb": "../" + str(inst.get("masked_rgb")).replace('\\', '/')
-                        })
-    return pool
+def get_material_from_bank(color, material):
+    target_folder = MATERIAL_BANK_DIR / f"{color}_{material}"
+    if not target_folder.exists(): return None
+    images = list(target_folder.glob("*.jpg")) + list(target_folder.glob("*.jpeg")) + list(target_folder.glob("*.png"))
+    if not images: return None
+    return Image.open(random.choice(images)).convert("RGB")
 
 def main():
     original_dir = os.getcwd()
@@ -190,12 +181,21 @@ def main():
         with open(GT_PATH, 'r', encoding='utf-8') as f:
             gt_data = json.load(f).get("data", {})
 
-        reference_pool = build_reference_pool(gt_data)
-        if not reference_pool:
-            print("❌ No valid reference images found in Ground Truth.")
+        # Load ONLY plausible materials from the Material Bank
+        available_combos = []
+        if MATERIAL_BANK_DIR.exists():
+            for d in MATERIAL_BANK_DIR.iterdir():
+                if d.is_dir() and '_' in d.name:
+                    c, m = d.name.split('_', 1)
+                    # ✅ The Guardrail: Only append if it's architecturally realistic!
+                    if m in PLAUSIBLE_COMBINATIONS and c in PLAUSIBLE_COMBINATIONS[m]:
+                        available_combos.append((c, m))
+                    
+        if not available_combos:
+            print(f"❌ Material bank not found or lacks plausible materials at {MATERIAL_BANK_DIR}")
             return
+        print(f"🎨 Found {len(available_combos)} realistic, plausible material styles in the bank.")
 
-        # Load Existing Benchmark Progress to allow resuming
         if BENCHMARK_JSON_PATH.exists():
             with open(BENCHMARK_JSON_PATH, "r", encoding="utf-8") as f:
                 benchmark_results = json.load(f)
@@ -212,79 +212,75 @@ def main():
         ip_model = IPAdapterXL(pipe, "models/image_encoder", "sdxl_models/ip-adapter_sdxl_vit-h.bin", device)
         print("🚀 Models Loaded.")
 
-        # Get list of possible target images
         all_imgs = list(gt_data.keys())
-        random.seed(42)  # Fixed seed for reproducibility
+        random.seed(42)  
         random.shuffle(all_imgs)
 
         generated_count = len(benchmark_results)
 
         for img_id in all_imgs:
-            if generated_count >= NUM_SAMPLES:
-                break
-            if img_id in benchmark_results:
-                continue
+            if generated_count >= NUM_SAMPLES: break
+            if img_id in benchmark_results: continue
 
             instances = gt_data[img_id].get("instances", {})
             valid_targets = []
             
             for bid, inst in instances.items():
                 if bid.startswith("building_"):
-                    # We can edit walls and roofs of buildings
                     for struct in ["wall", "roof"]:
                         if struct in inst and not inst[struct].get("skipped"):
                             valid_targets.append((bid, struct, inst[struct]))
                 elif bid.startswith("road_") or bid.startswith("sidewalk_"):
-                    # We can edit roads and sidewalks directly
                     if not inst.get("skipped"):
                         struct = inst.get("type", bid.split("_")[0])
                         valid_targets.append((bid, struct, inst))
             
             if not valid_targets: continue
 
-            # Pick a random structure to edit in this image
             target_bid, target_struct, inst_data = random.choice(valid_targets)
+            orig_color = inst_data.get("material_descriptor", {}).get("color", "unknown")
+            orig_material = inst_data.get("material_descriptor", {}).get("class", "unknown")
+
+            # Pick a random material combo from the FILTERED plausible list
+            valid_combos = [c for c in available_combos if (c[0] != orig_color or c[1] != orig_material)]
+            if not valid_combos: continue
+
+            new_color, new_material = random.choice(valid_combos)
             
-            orig_color = inst_data.get("material_descriptor", {}).get("color")
-            orig_material = inst_data.get("material_descriptor", {}).get("class")
-
-            # Pick a random reference material from a DIFFERENT image
-            valid_refs = [r for r in reference_pool if r["img_id"] != img_id and r["struct"] == target_struct and (r["color"] != orig_color or r["material"] != orig_material)]
-            if not valid_refs: continue
-
-            ref = random.choice(valid_refs)
             target_mask = "../" + str(inst_data.get("mask", "")).replace('\\', '/')
             rgb_path = "../" + str(gt_data[img_id].get("rgb", "")).replace('\\', '/')
             
             if not Path(target_mask).exists() or not Path(rgb_path).exists(): continue
 
-            user_prompt = f"Change the {target_struct} of {target_bid} to {ref['color']} {ref['material']}"
+            material_pil_img = get_material_from_bank(new_color, new_material)
+            if material_pil_img is None: continue
+
+            display_color = "" if new_color == "original" else new_color
+            user_prompt = f"Change the {target_struct} of {target_bid} to {display_color} {new_material}".replace("  ", " ").strip()
             
-            # Context-Aware ZEST Prompts
             if target_struct in ["road", "sidewalk"]:
-                zest_prompt = f"a highly detailed {target_struct} surface made of {ref['color']} {ref['material']}, featuring ground textures, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                zest_prompt = f"a highly detailed {target_struct} surface made of {display_color} {new_material}, featuring ground textures, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
             elif target_struct == "roof":
-                zest_prompt = f"a highly detailed building roof made of {ref['color']} {ref['material']}, featuring architectural geometry, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                zest_prompt = f"a highly detailed building roof made of {display_color} {new_material}, featuring architectural geometry, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
             else:
-                zest_prompt = f"a highly detailed building facade made of {ref['color']} {ref['material']}, featuring architectural outlines, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                zest_prompt = f"a highly detailed building facade made of {display_color} {new_material}, featuring architectural outlines, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+            
+            zest_prompt = zest_prompt.replace("  ", " ").strip()
             out_prefix = f"{img_id}_{target_bid}_{target_struct}"
 
             print(f"\n[{generated_count+1}/{NUM_SAMPLES}] Editing {img_id} -> {user_prompt}")
             
-            # Run Pipelines
-            material_pil_img = crop_image_to_mask(ref["masked_rgb"])
             naive_path = run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_pil_img, zest_prompt, out_prefix)
             proposed_path = run_proposed_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, zest_prompt, out_prefix)
             improved_path = run_improved_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, zest_prompt, out_prefix)
 
-            # Save Results
             benchmark_results[img_id] = {
                 "target_instance": target_bid,
                 "target_structure": target_struct,
                 "original_color": orig_color,
                 "original_material": orig_material,
-                "new_color": ref["color"],
-                "new_material": ref["material"],
+                "new_color": new_color,
+                "new_material": new_material,
                 "simulated_user_prompt": user_prompt,
                 "zest_prompt": zest_prompt,
                 "mask_path": target_mask,

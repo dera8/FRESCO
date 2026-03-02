@@ -34,7 +34,7 @@ def load_image_gray_np(path, size=(1024, 1024)):
     return np.array(img)
 
 def resolve_path(path_str):
-    """Fixes paths that were saved relative to the zest_code subfolder."""
+    """Fixes paths that were saved relative to the script's execution folder."""
     if path_str.startswith("../"):
         return Path(path_str[3:])
     return Path(path_str)
@@ -76,12 +76,14 @@ def main():
 
     print("⏳ Initializing FID Metrics...")
     # FID objects
+    fid_original = FrechetInceptionDistance(feature=2048).to(DEVICE)
     fid_naive = FrechetInceptionDistance(feature=2048).to(DEVICE)
     fid_proposed = FrechetInceptionDistance(feature=2048).to(DEVICE)
     fid_improved = FrechetInceptionDistance(feature=2048).to(DEVICE)
 
     # Score trackers
     results = {
+        "original": {"bg_ssim": [], "global_clip": [], "local_clip": []},
         "naive": {"bg_ssim": [], "global_clip": [], "local_clip": []},
         "proposed": {"bg_ssim": [], "global_clip": [], "local_clip": []},
         "improved": {"bg_ssim": [], "global_clip": [], "local_clip": []}
@@ -103,19 +105,21 @@ def main():
             continue
 
         # ---------------------------------------------------------
-        # 1. FID Score
+        # 1. FID Score Updates
         # ---------------------------------------------------------
         orig_tensor = load_image_tensor(orig_path).to(DEVICE)
         naive_tensor = load_image_tensor(naive_path).to(DEVICE)
         prop_tensor = load_image_tensor(prop_path).to(DEVICE)
         improved_tensor = load_image_tensor(improved_path).to(DEVICE)
 
-        # Update real images
+        # Update real images (Original is the ground truth)
+        fid_original.update(orig_tensor, real=True)
         fid_naive.update(orig_tensor, real=True)
         fid_proposed.update(orig_tensor, real=True)
         fid_improved.update(orig_tensor, real=True)
 
         # Update fake images
+        fid_original.update(orig_tensor, real=False) # Orig vs Orig will be ~0
         fid_naive.update(naive_tensor, real=False)
         fid_proposed.update(prop_tensor, real=False)
         fid_improved.update(improved_tensor, real=False)
@@ -134,12 +138,14 @@ def main():
         bg_mask = ~mask_np  # True where the image should NOT have been edited
 
         # Calculate SSIM Maps
+        _, orig_ssim_map = ssim(orig_gray, orig_gray, full=True, data_range=255) # Exactly 1.0 everywhere
         _, naive_ssim_map = ssim(orig_gray, naive_gray, full=True, data_range=255)
         _, prop_ssim_map = ssim(orig_gray, prop_gray, full=True, data_range=255)
         _, improved_ssim_map = ssim(orig_gray, improved_gray, full=True, data_range=255)
 
         # Extract SSIM only for the background
         if np.any(bg_mask):
+            results["original"]["bg_ssim"].append(orig_ssim_map[bg_mask].mean())
             results["naive"]["bg_ssim"].append(naive_ssim_map[bg_mask].mean())
             results["proposed"]["bg_ssim"].append(prop_ssim_map[bg_mask].mean())
             results["improved"]["bg_ssim"].append(improved_ssim_map[bg_mask].mean())
@@ -147,17 +153,22 @@ def main():
         # ---------------------------------------------------------
         # 3. CLIP Scores (Global AND Local Alignment)
         # ---------------------------------------------------------
+        orig_img = Image.open(orig_path).convert("RGB")
         naive_img = Image.open(naive_path).convert("RGB")
         prop_img = Image.open(prop_path).convert("RGB")
         improved_img = Image.open(improved_path).convert("RGB")
 
         # Create localized versions for Masked CLIP
+        orig_local = get_masked_crop(orig_img, mask_np)
         naive_local = get_masked_crop(naive_img, mask_np)
         prop_local = get_masked_crop(prop_img, mask_np)
         improved_local = get_masked_crop(improved_img, mask_np)
 
         with torch.no_grad():
             # --- GLOBAL CLIP ---
+            inputs_o = clip_processor(text=[prompt], images=orig_img, return_tensors="pt", padding=True).to(DEVICE)
+            results["original"]["global_clip"].append(clip_model(**inputs_o).logits_per_image.item())
+            
             inputs_n = clip_processor(text=[prompt], images=naive_img, return_tensors="pt", padding=True).to(DEVICE)
             results["naive"]["global_clip"].append(clip_model(**inputs_n).logits_per_image.item())
             
@@ -168,6 +179,9 @@ def main():
             results["improved"]["global_clip"].append(clip_model(**inputs_i).logits_per_image.item())
 
             # --- LOCAL (MASKED) CLIP ---
+            inputs_o_loc = clip_processor(text=[prompt], images=orig_local, return_tensors="pt", padding=True).to(DEVICE)
+            results["original"]["local_clip"].append(clip_model(**inputs_o_loc).logits_per_image.item())
+            
             inputs_n_loc = clip_processor(text=[prompt], images=naive_local, return_tensors="pt", padding=True).to(DEVICE)
             results["naive"]["local_clip"].append(clip_model(**inputs_n_loc).logits_per_image.item())
             
@@ -182,43 +196,53 @@ def main():
     # ==========================================
     print("\n⏳ Computing final FID scores (this takes a few seconds)...")
     try:
+        final_fid_orig = 0.0 # Comparing Real images to Real images mathematically zeroes out
         final_fid_naive = float(fid_naive.compute().item())
         final_fid_prop = float(fid_proposed.compute().item())
         final_fid_improved = float(fid_improved.compute().item())
     except ValueError as e:
-        print(f"\n⚠️ FID Warning: {e} (Need more generated images for a reliable statistical FID calculation).")
-        final_fid_naive = final_fid_prop = final_fid_improved = float('nan')
+        print(f"\n⚠️ FID Warning: {e}")
+        final_fid_orig = final_fid_naive = final_fid_prop = final_fid_improved = float('nan')
 
+    mean_orig_ssim = np.mean(results["original"]["bg_ssim"]) if results["original"]["bg_ssim"] else 0
     mean_naive_ssim = np.mean(results["naive"]["bg_ssim"]) if results["naive"]["bg_ssim"] else 0
     mean_prop_ssim = np.mean(results["proposed"]["bg_ssim"]) if results["proposed"]["bg_ssim"] else 0
     mean_improved_ssim = np.mean(results["improved"]["bg_ssim"]) if results["improved"]["bg_ssim"] else 0
 
+    mean_orig_gclip = np.mean(results["original"]["global_clip"]) if results["original"]["global_clip"] else 0
     mean_naive_gclip = np.mean(results["naive"]["global_clip"]) if results["naive"]["global_clip"] else 0
     mean_prop_gclip = np.mean(results["proposed"]["global_clip"]) if results["proposed"]["global_clip"] else 0
     mean_improved_gclip = np.mean(results["improved"]["global_clip"]) if results["improved"]["global_clip"] else 0
 
+    mean_orig_lclip = np.mean(results["original"]["local_clip"]) if results["original"]["local_clip"] else 0
     mean_naive_lclip = np.mean(results["naive"]["local_clip"]) if results["naive"]["local_clip"] else 0
     mean_prop_lclip = np.mean(results["proposed"]["local_clip"]) if results["proposed"]["local_clip"] else 0
     mean_improved_lclip = np.mean(results["improved"]["local_clip"]) if results["improved"]["local_clip"] else 0
 
-    print("\n" + "="*85)
-    print(" 📊 EVALUATION RESULTS: NAIVE vs PROPOSED vs IMPROVED")
-    print("="*85)
-    print(f"{'Metric':<20} | {'Naive (Global)':<16} | {'Proposed (Masked)':<18} | {'Improved (Composited)':<22}")
-    print("-" * 85)
-    print(f"{'Bg SSIM (↑)':<20} | {mean_naive_ssim:^16.4f} | {mean_prop_ssim:^18.4f} | {mean_improved_ssim:^22.4f}")
-    print(f"{'Global CLIP (↑)':<20} | {mean_naive_gclip:^16.2f} | {mean_prop_gclip:^18.2f} | {mean_improved_gclip:^22.2f}")
-    print(f"{'Masked CLIP (↑)':<20} | {mean_naive_lclip:^16.2f} | {mean_prop_lclip:^18.2f} | {mean_improved_lclip:^22.2f}")
-    print(f"{'FID Realism (↓)':<20} | {final_fid_naive:^16.2f} | {final_fid_prop:^18.2f} | {final_fid_improved:^22.2f}")
-    print("="*85)
+    print("\n" + "="*105)
+    print(" 📊 EVALUATION RESULTS: ORIGINAL vs NAIVE vs PROPOSED vs IMPROVED")
+    print("="*105)
+    print(f"{'Metric':<20} | {'Orig (Baseline)':<18} | {'Naive (Global)':<16} | {'Proposed (Masked)':<18} | {'Improved (Comp.)':<18}")
+    print("-" * 105)
+    print(f"{'Bg SSIM (↑)':<20} | {mean_orig_ssim:^18.4f} | {mean_naive_ssim:^16.4f} | {mean_prop_ssim:^18.4f} | {mean_improved_ssim:^18.4f}")
+    print(f"{'Global CLIP (↑)':<20} | {mean_orig_gclip:^18.2f} | {mean_naive_gclip:^16.2f} | {mean_prop_gclip:^18.2f} | {mean_improved_gclip:^18.2f}")
+    print(f"{'Masked CLIP (↑)':<20} | {mean_orig_lclip:^18.2f} | {mean_naive_lclip:^16.2f} | {mean_prop_lclip:^18.2f} | {mean_improved_lclip:^18.2f}")
+    print(f"{'FID Realism (↓)':<20} | {final_fid_orig:^18.2f} | {final_fid_naive:^16.2f} | {final_fid_prop:^18.2f} | {final_fid_improved:^18.2f}")
+    print("="*105)
 
     # Save quantitative results to JSON
     report = {
         "metrics_explanation": {
             "Background SSIM": "Higher is better. Measures how well the unedited background was preserved. (Max 1.0)",
-            "Global CLIP": "Higher is better, but can be misleading for local edits. Measures full-image alignment to text.",
+            "Global CLIP": "Higher is better. Measures full-image alignment to text. Orig baseline should be lowest (before edit).",
             "Masked CLIP": "Higher is better. Evaluates ONLY the targeted edit region. High scores prove localized precision.",
             "FID": "Lower is better. Measures overall realism compared to the original photos."
+        },
+        "original_images_baseline": {
+            "background_ssim": float(mean_orig_ssim),
+            "global_clip_score": float(mean_orig_gclip),
+            "masked_clip_score": float(mean_orig_lclip),
+            "fid_score": final_fid_orig
         },
         "naive_pipeline": {
             "background_ssim": float(mean_naive_ssim),
