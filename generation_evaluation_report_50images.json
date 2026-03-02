@@ -1,0 +1,32 @@
+{
+    "metrics_explanation": {
+        "Background SSIM": "Higher is better. Measures how well the unedited background was preserved. (Max 1.0)",
+        "Global CLIP": "Higher is better. Measures full-image alignment to text. Orig baseline should be lowest (before edit).",
+        "Masked CLIP": "Higher is better. Evaluates ONLY the targeted edit region. High scores prove localized precision.",
+        "FID": "Lower is better. Measures overall realism compared to the original photos."
+    },
+    "original_images_baseline": {
+        "background_ssim": 1.0,
+        "global_clip_score": 20.459547424316405,
+        "masked_clip_score": 24.960336112976073,
+        "fid_score": 0.0
+    },
+    "naive_pipeline": {
+        "background_ssim": 0.28488356955547167,
+        "global_clip_score": 26.824696617126463,
+        "masked_clip_score": 26.32917797088623,
+        "fid_score": 236.0845184326172
+    },
+    "proposed_pipeline": {
+        "background_ssim": 0.8011252185123164,
+        "global_clip_score": 22.65957550048828,
+        "masked_clip_score": 25.746417922973635,
+        "fid_score": 49.87256622314453
+    },
+    "improved_pipeline": {
+        "background_ssim": 0.997071476219677,
+        "global_clip_score": 21.99048168182373,
+        "masked_clip_score": 25.526111946105956,
+        "fid_score": 30.116369247436523
+    }
+}

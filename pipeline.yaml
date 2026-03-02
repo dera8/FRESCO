@@ -22,7 +22,7 @@ env:
 # =========================
 sam3:
   enabled: true
-  script: 2_sam3hi.py
+  script: sam3hi.py
 
   classes:
     wall:
@@ -72,7 +72,7 @@ sam3:
 # =========================
 proxy_check:
   enabled: true
-  script: 3_proxy_semantic_check.py
+  script: proxy_semantic_check.py
   out_dir: "{output_root}/sam3_instances"
   manifest: "{output_root}/sam3_instances/manifest.json"
 
@@ -82,7 +82,7 @@ proxy_check:
 #version: v2.1_filtered
 nemotron_structured:
   enabled: true
-  script: 4_nemotron_building_priors.py
+  script: nemotron_building_priors.py
 
   model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
   canon_mode: soft
@@ -113,7 +113,7 @@ nemotron_structured:
 # =========================
 nemotron_baseline:
   enabled: true
-  script: 5_nemotron_fullimage.py
+  script: nemotron_fullimage.py
 
   model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
   prompt_type: two_pass_json_review
@@ -135,14 +135,14 @@ annotations:
   enabled: true
   script: gui_annotator.py
 
-metrics:
+det_metrics:
   enabled: true
-  script: 6_evaluate_metrics.py
-
-material_replacement:
-  enabled: true
-  script: 8_zest_evaluator.py
+  script: evaluate_detection.py
 
 nlp_material_replacement:
   enabled: true
-  script: 9_nlp_zest_evaluator.py
+  script: nlp_zest_evaluator.py
+
+gen_metrics:
+  enabled: true
+  script: evaluate_generation.py
