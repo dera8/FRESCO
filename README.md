@@ -1,237 +1,133 @@
-# AutoPBR v2
+# FRESCO: Facade Recognition and Editing for Structure-aware City Outdoor imagery
 
-**Structured Material Recognition in Urban Scenes from Street-Level Imagery**
+**A Perception-First Framework for Urban Material Understanding and Editing**
 
-AutoPBR v2 is a research-oriented pipeline for **structured material recognition** in complex urban scenes using street-level photographs.
+**Article - Repainting the City: Geometry-Preserving Material Editing and Synthesis from Street Views**
 
-The core contribution is a **hierarchical decomposition of urban imagery** (road / wall / roof, optionally per-building) that enables **stable, interpretable, and physically meaningful material descriptors**, addressing ambiguity in material recognition from unconstrained images.
+> **Note:** This repository contains the official implementation of the **FRESCO** framework, developed for submission to the **European Conference on Computer Vision (ECCV)**.
 
-While AutoPBR can be connected to PBR and 3D pipelines, **its primary focus is perception, not rendering**.
+![FRESCO Architecture](fresco_overview.jpg)
+*(Architecture diagram)*
 
----
+## 📖 Overview
 
-## 🔍 Motivation
+**FRESCO** addresses the challenge of structure-conditioned material recognition and editing in complex urban environments. Unlike standard text-to-image editing pipelines that treat images as flat grids of pixels, FRESCO adopts a **perception-first** approach. It explicitly decomposes urban scenes into semantic structural supports (walls, roofs, doors, windows, roads) before applying any generative transformations.
 
-Material recognition in urban scenes is inherently ambiguous:
-
-* multiple materials coexist in the same image,
-* appearance varies due to lighting, weather, and aging,
-* large structures (buildings) mix heterogeneous surfaces.
-
-AutoPBR v2 is built around the hypothesis that:
-
-> **Material recognition becomes ill-posed without explicit structural decomposition.**
-
-By explicitly separating **road, wall, and roof regions**, and optionally **per-building instances**, AutoPBR produces material descriptors that are:
-
-* more stable,
-* more interpretable,
-* easier to evaluate quantitatively.
+### Key Capabilities
+* **Geometry-Aware Decomposition:** Utilizes **SAM3** to isolate fine-grained architectural instances (walls, roofs, doors, windows, roads) from background clutter.
+* **Structured Material Recognition:** Uses **Nemotron-4** to extract stable material descriptors (class, color, state), avoiding dominant-material collapse common in global inference.
+* **Geometry-Preserving Material Editing:** A powerful downstream application that enables high-fidelity material swapping (e.g., "concrete" → "brick") while strictly preserving the original 3D structure, window layouts and perspective.
+* **Plausible Material Retrieval:** Features a guardrail system to ensure only architecturally realistic materials (e.g., prohibiting "green asphalt") are used.
+* **Luminance-Aware Editing:** A custom post-processing pipeline that transfers original macro-lighting (shadows/AO) to generated textures, bypassing VAE degradation.
 
 ---
 
-## 🧠 Core Idea
+## 🛠️ Installation
 
-Instead of predicting a single “material label” per image, AutoPBR outputs:
+This codebase is built upon the **IP-Adapter** architecture for Stable Diffusion XL. Please follow these steps strictly to set up the environment and download the necessary weights.
 
-> **Structured material descriptors conditioned on semantic and structural context.**
-
-Example:
-
-```json
-{
-  "class": "wall",
-  "material": ["brick", "painted_surface"],
-  "color": ["red", "white"],
-  "surface": "rough",
-  "aging": "weathered",
-  "confidence": 0.72
-}
-```
-
-This representation is:
-
-* **semantic** (interpretable),
-* **physical** (compatible with simulation),
-* **measurable** (coverage-weighted, confidence-aware).
-
----
-
-## Pipeline Overview
-
-```
-Street-Level Photos
-        ↓
-[Level 1] Semantic Segmentation (SAM3)
-        ↓
-[Level 2] Structural Decomposition
-        ↓
-[Level 3] Masked Visual Analysis (VLM)
-        ↓
-Structured Material Descriptors (JSON)
-```
-
-### Level 1 — Semantic Segmentation
-
-Each image is decomposed into:
-
-* `road`
-* `wall`
-* `roof`
-
-using SAM3-based segmentation.
-
-### Level 2 — Structural Decomposition (Optional)
-
-If multiple buildings are present:
-
-* wall and roof regions are split into **per-building instances**
-* otherwise, a **global per-class representation** is used
-
-This allows a controlled trade-off between simplicity and precision.
-
-### Level 3 — Material Analysis
-
-For each valid region:
-
-* masked RGB is generated,
-* a Vision-Language Model (VLM) analyzes **only the target surface**,
-* outputs structured descriptors (material, color, surface, aging, confidence).
-
----
-
-## Installation
+### 1. Core IP-Adapter Setup
+First, clone the IP-Adapter repository and reorganize the directory structure:
 
 ```bash
-git clone https://github.com/dera8/AutoPBR.git
-cd AutoPBR
+# Clone the repository
+git clone https://github.com/tencent-ailab/IP-Adapter.git
 
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-pip install torch torchvision
-pip install git+https://github.com/huggingface/transformers.git
-pip install -r requirements.txt
+# Move the inner package to the root and clean up
+mv IP-Adapter/ip_adapter ip_adapter
+rm -rf IP-Adapter/
 ```
 
-### API Keys
+### 2. Model Weights Download
+Download the pre-trained IP-Adapter models for SDXL. **Note:** You must have Git LFS installed.
 
 ```bash
-export NVIDIA_API_KEY="your_nvidia_api_key"
+# Install Git LFS
+git lfs install
+
+# Clone the model weights from HuggingFace
+git clone https://huggingface.co/h94/IP-Adapter
+
+# Organize models into the correct directory structure
+mv IP-Adapter/models models
+mv IP-Adapter/sdxl_models sdxl_models
+rm -rf IP-Adapter/
 ```
 
----
-
-## Quick Start (ECCV-relevant path)
+### 3. Dependencies
+Install the required Python packages for configuration management and environment variables:
 
 ```bash
-# 1. Put images here
-photos2/
-
-# 2. Semantic segmentation
-python 2_sam3hi.py
-
-# 3. Build semantic composites
-python sam3hi.py --all
-
-# 4. Material recognition
-python nemotron_hierarchical.py
+pip install pyyaml python-dotenv
+# Ensure you have other standard deps like torch, diffusers, transformers, etc.
 ```
 
-Output:
+### 4. API Key Configuration
+FRESCO uses NVIDIA's API for the Nemotron VLM and Llama-3.1 parsing.
+1. Create a file named `.env` in the root directory.
+2. Add your API key:
 
-```
-materials_hybrid.json
+```env
+NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## Output Format (Core Result)
+## ⚙️ Configuration
 
-```json
-{
-  "photo_id": "101989905547842",
-  "classes": {
-    "wall": {
-      "coverage": 35.2,
-      "material": ["painted wood", "wood siding"],
-      "color": ["red", "dark red"],
-      "surface": "rough",
-      "aging": "weathered",
-      "confidence": 0.81
-    },
-    "roof": {
-      "coverage": 18.7,
-      "material": ["clay tiles"],
-      "color": ["terracotta"],
-      "surface": "tiled",
-      "confidence": 0.88
-    }
-  }
-}
+FRESCO is designed for reproducibility. It is controlled by a **single configuration file**:
+
+* **Path:** `pipeline.yaml`
+
+This file manages all parameters, including SAM3 thresholds, Nemotron prompts, and file paths. This ensures that experiments are reproducible for colleagues and reviewers, regardless of whether you run the code via a Jupyter Notebook or the Command Line Interface (CLI).
+
+---
+
+## 🚀 Usage
+You can use the notebook `run_pipeline.ipynb` to execute step-by-step the whole FRESCO workflow. In alternative, you can launch utility scripts singularly to execute specific tasks.
+
+### Natural Language Editing (Single Image)
+To perform a single, language-driven edit on a specific image (e.g., *"Change the wall of the biggest building to red brick"*), run the evaluator script. This script includes the **architectural plausibility guardrails**.
+
+```bash
+python generation_test.py --prompt "Change the wall of the biggest building on the right to white concrete" --json "ground_truth_eval.json"
 ```
 
----
+**What happens:**
+1. The system parses your prompt using Llama-3.1.
+2. It retrieves a physically plausible texture from the `colored_material_bank`.
+3. It generates the edit using SDXL + ControlNet + IP-Adapter.
+4. It applies Luminance Transfer and Pixel-Perfect Compositing.
 
-## What AutoPBR v2 **Is**
+**Output:** Check `nlp_results/` for the final image and `nlp_results/debug_vis/` for intermediate steps (masks, depth maps, lighting transfer).
 
-✅ A framework for **structured material recognition**
-✅ Focused on **urban scenes**
-✅ Designed for **evaluation and ablation**
-✅ Compatible with **simulation and rendering pipelines**
+### Benchmark Generation
+To generate the full quantitative benchmark (N=50 pairs) used in the paper:
 
-## What AutoPBR v2 **Is Not**
-
-❌ Not inverse rendering
-❌ Not texture reconstruction
-❌ Not photorealistic PBR synthesis
-❌ Not instance-level material cloning
-
----
-
-## Optional Downstream Use (Not Core Contribution)
-
-AutoPBR descriptors can be mapped to:
-
-* PBR libraries,
-* Unreal Engine materials,
-* urban digital twins.
-
-These steps are **explicitly downstream** and **not required** to use or evaluate the method.
-
----
-
-## Evaluation Use Cases
-
-* Stability under viewpoint changes
-* Ambiguity reduction vs. unstructured baselines
-* Coverage-weighted material consistency
-* Structured vs. unstructured material prediction
-
----
-
-## Project Structure
-
+```bash
+python generate_benchmark_set.py
 ```
-AutoPBR/
-├── 2_sam3hi.py              # Semantic segmentation
-├── sam3hi.py                # Structural decomposition
-├── nemotron_hierarchical.py # Material analysis
-├── photos2/
-├── sam3_semantic2/
-├── sam3_hierarchical_final/
-└── materials_hybrid.json
+This script automatically samples random *plausible* material swaps for walls, roofs, and roads, saving the dataset to `benchmark_dataset.json`.
+
+### Quantitative Generation Evaluation
+To reproduce the SSIM, CLIP, and FID metrics reported in the paper:
+
+```bash
+python evaluate_generation.py
 ```
+This produces the `generation_evaluation_report.json` containing the ablation study results (Original vs. Global vs. Proposed vs. Improved).
 
 ---
 
-## Citation
-
-```bibtex
-@software{autopbr_v2_2025,
-  title={AutoPBR v2: Structured Material Recognition in Urban Scenes},
-  author={Your Name},
-  year={2025},
-  url={https://github.com/dera8/AutoPBR}
-}
-```
+## 📂 Output Structure
+* **`sam3_instances/`**: Contains the segmentation instances extracted with SAM3.
+* **`masked_rgb/`**: Contains the segmentation instances categorized with materials with Nemotron.
+* **`nlp_results/`**: Contains the final edited images.
+* **`nlp_results/debug_vis/`**: Contains visual debugging steps:
+    * `03_binary_mask.jpg`: The raw SAM3 mask.
+    * `05_depth_map.jpg`: The DPT-Hybrid depth estimation.
+    * `06_grayscale_initialization.jpg`: The composite used to guide SDXL.
+    * `08_lighting_matched.jpg`: The generated texture after Luminance Transfer.
+    * `09_final_output.jpg`: The final result after compositing.
+* **`benchmark_results/`**: Contains ablation study images from benchmark set.
+---
