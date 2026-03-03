@@ -5,6 +5,7 @@ from PIL import Image
 from collections import defaultdict
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import warnings
+import argparse
 
 # Suppress warnings for zero-division when a class is rarely predicted
 warnings.filterwarnings('ignore') 
@@ -74,6 +75,21 @@ def get_struct_items(data_node, is_global=False):
 # MAIN EXECUTION
 # ==========================================
 def main():
+    parser = argparse.ArgumentParser(description="Run generation pipeline with a natural language prompt.")
+    parser.add_argument("--baseline-json", type=str, default=None, help="JSON file storing baseline labels")
+    parser.add_argument("--structured-json", type=str, default=None, help="JSON file storing instances prediction labels")
+    parser.add_argument("--gt-json", type=str, default=None, help="JSON file storing instances ground truth labels")
+    args = parser.parse_args()  
+
+    if args.baseline_json:
+        BASELINE_JSON_PATH = args.baseline_json
+
+    if args.structured_json:
+        PRED_JSON_PATH = args.structured_json
+
+    if args.gt_json:
+        GT_JSON_PATH = args.gt_json
+
     print("⏳ Loading JSON files...")
     with open(GT_JSON_PATH, 'r', encoding='utf-8') as f: gt_data = json.load(f).get("data", {})
     with open(PRED_JSON_PATH, 'r', encoding='utf-8') as f: pred_data = json.load(f).get("data", {})

@@ -7,6 +7,7 @@ import numpy as np
 import gc
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 from pathlib import Path
+import argparse
 
 # ==========================================
 # COMPATIBILITY PATCHES
@@ -19,16 +20,16 @@ import transformers.utils
 if not hasattr(transformers.utils, 'FLAX_WEIGHTS_NAME'):
     transformers.utils.FLAX_WEIGHTS_NAME = "flax_model.msgpack"
 
-# ZEST Pipeline Imports
+# Pipeline Imports
 from diffusers import StableDiffusionXLControlNetInpaintPipeline, ControlNetModel
-from zest_code.ip_adapter import IPAdapterXL
-from zest_code.ip_adapter.utils import register_cross_attention_hook
+from ip_adapter import IPAdapterXL
+from ip_adapter.utils import register_cross_attention_hook
 from transformers import pipeline
 
-GT_PATH = "../ground_truth_eval.json" 
-OUTPUT_DIR = Path("../zest_benchmark_results")
-BENCHMARK_JSON_PATH = Path("../benchmark_dataset.json")
-MATERIAL_BANK_DIR = Path("../colored_material_bank")
+GT_JSON_PATH = "ground_truth_eval.json" 
+OUTPUT_DIR = Path("benchmark_results")
+BENCHMARK_JSON_PATH = Path("benchmark_dataset.json")
+MATERIAL_BANK_DIR = Path("colored_material_bank")
 
 # Number of images to generate for the evaluation benchmark
 NUM_SAMPLES = 300  
@@ -76,7 +77,7 @@ def apply_luminance_transfer(original_img, generated_img, blend_ratio=0.65):
     return Image.fromarray((final_np * 255).astype(np.uint8))
 
 # ==========================================
-# ZEST PIPELINE FUNCTIONS
+# PIPELINE FUNCTIONS
 # ==========================================
 
 def run_proposed_pipeline(ip_model, depth_estimator, rgb_path, mask_path, material_img, prompt, out_prefix):
@@ -171,14 +172,28 @@ def get_material_from_bank(color, material):
     return Image.open(random.choice(images)).convert("RGB")
 
 def main():
+    parser = argparse.ArgumentParser(description="Run generation pipeline with a natural language prompt.")
+    parser.add_argument("--benchmark-json", type=str, default=None, help="JSON file storing benchmark labels")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output folder directory")
+    parser.add_argument("--gt-json", type=str, default=None, help="JSON file storing instances ground truth labels")
+    args = parser.parse_args()  
+
+    if args.benchmark_json:
+        BENCHMARK_JSON_PATH = Path(args.benchmark_json)
+
+    if args.output_dir:
+        OUTPUT_DIR = Path(args.output_dir)
+
+    if args.gt_json:
+        GT_JSON_PATH = args.gt_json
+
     original_dir = os.getcwd()
     try:
-        os.chdir("zest_code")
         OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
         device = "cuda"
 
         print("📖 Loading Ground Truth data...")
-        with open(GT_PATH, 'r', encoding='utf-8') as f:
+        with open(GT_JSON_PATH, 'r', encoding='utf-8') as f:
             gt_data = json.load(f).get("data", {})
 
         # Load ONLY plausible materials from the Material Bank
@@ -202,7 +217,7 @@ def main():
         else:
             benchmark_results = {}
 
-        print("\n⏳ Loading ZEST Models (ControlNet & IPAdapter)...")
+        print("\n⏳ Loading Models (ControlNet & IPAdapter)...")
         depth_estimator = pipeline("depth-estimation", model="Intel/dpt-hybrid-midas", device=0)
         controlnet = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0", variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(device)
         pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
@@ -259,20 +274,20 @@ def main():
             user_prompt = f"Change the {target_struct} of {target_bid} to {display_color} {new_material}".replace("  ", " ").strip()
             
             if target_struct in ["road", "sidewalk"]:
-                zest_prompt = f"a highly detailed {target_struct} surface made of {display_color} {new_material}, featuring ground textures, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                gen_prompt = f"a highly detailed {target_struct} surface made of {display_color} {new_material}, featuring ground textures, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
             elif target_struct == "roof":
-                zest_prompt = f"a highly detailed building roof made of {display_color} {new_material}, featuring architectural geometry, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                gen_prompt = f"a highly detailed building roof made of {display_color} {new_material}, featuring architectural geometry, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
             else:
-                zest_prompt = f"a highly detailed building facade made of {display_color} {new_material}, featuring architectural outlines, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
+                gen_prompt = f"a highly detailed building facade made of {display_color} {new_material}, featuring architectural outlines, photorealistic street photography, matching natural sunlight, ambient occlusion, 8k resolution"
             
-            zest_prompt = zest_prompt.replace("  ", " ").strip()
+            gen_prompt = gen_prompt.replace("  ", " ").strip()
             out_prefix = f"{img_id}_{target_bid}_{target_struct}"
 
             print(f"\n[{generated_count+1}/{NUM_SAMPLES}] Editing {img_id} -> {user_prompt}")
             
-            naive_path = run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_pil_img, zest_prompt, out_prefix)
-            proposed_path = run_proposed_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, zest_prompt, out_prefix)
-            improved_path = run_improved_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, zest_prompt, out_prefix)
+            naive_path = run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_pil_img, gen_prompt, out_prefix)
+            proposed_path = run_proposed_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, gen_prompt, out_prefix)
+            improved_path = run_improved_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, gen_prompt, out_prefix)
 
             benchmark_results[img_id] = {
                 "target_instance": target_bid,
@@ -282,7 +297,7 @@ def main():
                 "new_color": new_color,
                 "new_material": new_material,
                 "simulated_user_prompt": user_prompt,
-                "zest_prompt": zest_prompt,
+                "gen_prompt": gen_prompt,
                 "mask_path": target_mask,
                 "original_image": f"{OUTPUT_DIR.name}/{out_prefix}_original.jpg",
                 "proposed_image": f"{OUTPUT_DIR.name}/{out_prefix}_proposed.jpg",
