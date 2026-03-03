@@ -7,8 +7,8 @@
 # GLOBAL PATHS
 # =========================
 paths:
-  photos_dir: photos
-  output_root: data_output
+  photos_dir: photos_canary
+  output_root: data_output_canary
 
 # =========================
 # ENVIRONMENT
@@ -22,7 +22,7 @@ env:
 # =========================
 sam3:
   enabled: true
-  script: sam3hi.py
+  script: sam3_v3.py
 
   classes:
     wall:
@@ -91,7 +91,7 @@ nemotron_structured:
 
   manifest: "{output_root}/sam3_instances/manifest.json"
   masked_dir: "{output_root}/masked_rgb"
-  out_json: materials_full_filtered.json
+  out_json: "{output_root}/materials_full_filtered.json"
 
   # Coverage thresholds
   min_cov: 1.0
@@ -118,7 +118,7 @@ nemotron_baseline:
   model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
   prompt_type: two_pass_json_review
   source_manifest: "{output_root}/sam3_instances/manifest.json"
-  output_json: baseline_full_image.json
+  output_json: "{output_root}/baseline_full_image.json"
 
 # =========================
 # STEP 5 — VALIDATION
@@ -127,8 +127,8 @@ validation:
   enabled: true
   script: validator.py
 
-  structured_json: materials_full_filtered.json
-  baseline_json: baseline_full_image.json
+  structured_json: "{output_root}/materials_full_filtered.json"
+  baseline_json: "{output_root}/baseline_full_image.json"
   out_csv: "{output_root}/validation_results/report.csv"
 
 annotations:
@@ -139,10 +139,26 @@ det_metrics:
   enabled: true
   script: evaluate_detection.py
 
+  baseline_json: "{output_root}/baseline_full_image.json"
+  structured_json: "{output_root}/materials_full_filtered.json"
+  gt_json: "{output_root}/ground_truth_eval.json"
+
 nlp_material_replacement:
   enabled: true
-  script: nlp_zest_evaluator.py
+  script: generation_test.py
+
+  json: "{output_root}/ground_truth_eval.json"
+
+gen_bench:
+  enabled: true
+  script: generate_benchmark_set.py
+
+  benchmark_json: "{output_root}/benchmark_dataset.json"
+  output_dir: "{output_root}/benchmark_results"
+  gt_json: "{output_root}/ground_truth_eval.json"
 
 gen_metrics:
   enabled: true
   script: evaluate_generation.py
+
+  benchmark_json: "{output_root}/benchmark_dataset.json"

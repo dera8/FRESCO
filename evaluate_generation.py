@@ -6,6 +6,7 @@ from PIL import Image
 from pathlib import Path
 from tqdm import tqdm
 import warnings
+import argparse
 
 # Suppress annoying warnings from external libraries
 warnings.filterwarnings("ignore")
@@ -57,6 +58,13 @@ def get_masked_crop(img_pil, mask_np):
     return Image.fromarray(cropped)
 
 def main():
+    parser = argparse.ArgumentParser(description="Run generation pipeline with a natural language prompt.")
+    parser.add_argument("--benchmark-json", type=str, default=None, help="JSON file storing benchmark labels")
+    args = parser.parse_args()  
+
+    if args.benchmark_json:
+        BENCHMARK_JSON_PATH = Path(args.benchmark_json)
+
     if not BENCHMARK_JSON_PATH.exists():
         raise FileNotFoundError(f"❌ {BENCHMARK_JSON_PATH} not found. Run generate_benchmark_set.py first!")
 
