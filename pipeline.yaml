@@ -116,7 +116,7 @@ nemotron_baseline:
   script: nemotron_fullimage.py
 
   model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
-  prompt_type: two_pass_json_review
+  prompt_type: unguided_multi_class
   source_manifest: "{output_root}/sam3_instances/manifest.json"
   output_json: "{output_root}/baseline_full_image.json"
 
@@ -142,6 +142,7 @@ det_metrics:
   baseline_json: "{output_root}/baseline_full_image.json"
   structured_json: "{output_root}/materials_full_filtered.json"
   gt_json: "{output_root}/ground_truth_eval.json"
+  output_json: "{output_root}/recognition_evaluation_report.json"
 
 nlp_material_replacement:
   enabled: true
@@ -162,3 +163,4 @@ gen_metrics:
   script: evaluate_generation.py
 
   benchmark_json: "{output_root}/benchmark_dataset.json"
+  output_json: "{output_root}/generation_evaluation_report.json"

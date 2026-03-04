@@ -9,6 +9,12 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Union
 from openai import OpenAI
 from PIL import Image
+import argparse
+
+MANIFEST_PATH = "data_output/sam3_instances/manifest.json"
+JSON_PATH = "data_output/baseline_fullimage.json"
+MODEL = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+PROMPT_TYPE = "two_pass_json_review"
 
 # ============================================================
 # COPIED VOCABS & UTILS (from 4_nemotron_per_imagev2.py)
@@ -239,18 +245,30 @@ def analyze_full_image(client, model, img_path: Path):
     return parsed, canonicalized
 
 def main():
+    ap = argparse.ArgumentParser(description="Step 4: Nemotron material descriptors from SAM3 manifest (full image).")
+    ap.add_argument("--source_manifest", required=True, help="SAM3 manifest.json (data_output/sam3_instances/manifest.json)")
+    ap.add_argument("--output_json", default="data_output/baseline_fullimage.json", help="Output JSON file")
+    ap.add_argument("--model", default="nvidia/llama-3.1-nemotron-nano-vl-8b-v1", help="Nemotron model")
+    ap.add_argument("--prompt_type", default="unguided_multi_class", help="Prompt type")
+    args = ap.parse_args()
+
     api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key:
         raise SystemExit("❌ Missing NVIDIA_API_KEY")
     
     client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key)
-    
+
+    MANIFEST_PATH = args.source_manifest
+    JSON_PATH = args.output_json
+    MODEL = args.model
+    PROMPT_TYPE = args.prompt_type
+
     # Load manifest
-    manifest_path = Path("data_output/sam3_instances/manifest.json")
+    manifest_path = Path(MANIFEST_PATH)
     if not manifest_path.exists():
         raise SystemExit(f"❌ Manifest not found: {manifest_path}")
     
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) #unguided_multi_class, two_pass_json_review
     
     """results = {
         "meta": {
@@ -264,7 +282,7 @@ def main():
     }"""
 
     # --- SNIPPET 1: LOAD EXISTING PROGRESS ---
-    out_path = Path("data_output/baseline_full_image.json")
+    out_path = Path(JSON_PATH)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists():
@@ -280,8 +298,8 @@ def main():
 
     results["meta"] = {
         "method": "baseline_full_image",
-        "model": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-        "prompt_type": "unguided_multi_class",
+        "model": MODEL,
+        "prompt_type": PROMPT_TYPE,
         "note": "No structural masks, analyzes full image at once",
         "source_manifest": str(manifest_path)
     }
