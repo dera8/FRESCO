@@ -21,6 +21,7 @@ import torchvision.transforms.functional as TF
 # CONFIGURATION
 # ==========================================
 BENCHMARK_JSON_PATH = Path("benchmark_dataset.json")
+OUTPUT_JSON_PATH = "generation_evaluation_report.json"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_image_tensor(path, size=(512, 512)):
@@ -60,6 +61,7 @@ def get_masked_crop(img_pil, mask_np):
 def main():
     parser = argparse.ArgumentParser(description="Run generation pipeline with a natural language prompt.")
     parser.add_argument("--benchmark-json", type=str, default=None, help="JSON file storing benchmark labels")
+    parser.add_argument("--output-json", type=str, default=OUTPUT_JSON_PATH, help="Path to save the output JSON results")
     args = parser.parse_args()  
 
     if args.benchmark_json:
@@ -106,7 +108,7 @@ def main():
         prop_path = resolve_path(entry["proposed_image"])
         improved_path = resolve_path(entry["improved_image"])
         mask_path = resolve_path(entry["mask_path"])
-        prompt = entry["zest_prompt"]
+        prompt = entry["gen_prompt"]
 
         if not all([orig_path.exists(), naive_path.exists(), prop_path.exists(), improved_path.exists(), mask_path.exists()]):
             print(f"\n⚠️ Missing files for {img_id}, skipping...")
@@ -272,7 +274,7 @@ def main():
         }
     }
 
-    out_json = Path("generation_evaluation_report.json")
+    out_json = Path(OUTPUT_JSON_PATH)
     out_json.write_text(json.dumps(report, indent=4))
     print(f"\n✅ Detailed evaluation saved to {out_json.name}")
 

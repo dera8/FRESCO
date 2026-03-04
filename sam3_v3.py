@@ -222,7 +222,7 @@ def main():
     manifest_out = []
 
     for img_path in tqdm(image_paths):
-        print(f"\n📸 Processing {img_path.name}")
+        #print(f"\n📸 Processing {img_path.name}")
 
         try:
             img = Image.open(img_path).convert("RGB")
@@ -306,7 +306,7 @@ def main():
         building_scores = building_res.get("scores", None)  # [N]
 
         n_buildings = 0 if building_masks is None else len(building_masks)
-        print(f"🏢 Found {n_buildings} buildings (before gating)")
+        #print(f"🏢 Found {n_buildings} buildings (before gating)")
 
         n_kept = 0
         if building_masks is not None and n_buildings > 0:
@@ -323,8 +323,8 @@ def main():
                 roof_bbox_h = mask_bbox_h(roof_mask)  # kept for logging/manifest only
 
                 if wall_bbox_h < MIN_INST_BBOX_H_WALL:
-                    print(f"   ⛔ building_{i:03d} skipped "
-                          f"(wall_bbox_h={wall_bbox_h}<{MIN_INST_BBOX_H_WALL})")
+                    #print(f"   ⛔ building_{i:03d} skipped "
+                    #      f"(wall_bbox_h={wall_bbox_h}<{MIN_INST_BBOX_H_WALL})")
                     continue
 
                 window_mask = intersect_u8(bmask_u8, structural_masks["window"])

@@ -6,11 +6,11 @@ from pathlib import Path
 from PIL import Image
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QVBoxLayout, QListWidget, QLabel, QComboBox, 
-                             QPushButton, QFormLayout, QMessageBox)
+                             QPushButton, QFormLayout, QMessageBox, QFileDialog)
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
 
-# Vocabularies from your Nemotron script
+# Vocabularies
 MATERIALS = ["asphalt", "concrete", "brick", "stone", "wood", "plaster", 
              "glass", "metal", "painted_surface", "tile", "slate", "shingles", "unknown"]
 COLORS = ["black", "gray", "white", "red", "brown", "yellow", 
@@ -39,14 +39,12 @@ class AnnotatorGUI(QMainWindow):
         self.nemotron_data = {}
         self.current_image_data = None
         self.current_mask_id = None
+        self.base_folder = None
 
         self.init_ui()
         
-        # NOTE: Make sure these point to your merged JSON!
-        self.load_data(
-            manifest_path="data_output/sam3_instances/manifest.json", 
-            nemotron_path="materials_full_filtered.json"
-        )
+        # Automatically prompt for folder on startup
+        self.open_folder_dialog()
 
     def init_ui(self):
         main_widget = QWidget()
@@ -55,6 +53,13 @@ class AnnotatorGUI(QMainWindow):
 
         # --- LEFT PANEL: Image List ---
         left_layout = QVBoxLayout()
+        
+        # 📂 NEW: Select Folder Button
+        self.btn_folder = QPushButton("📂 Select Data Folder")
+        self.btn_folder.clicked.connect(self.open_folder_dialog)
+        self.btn_folder.setStyleSheet("background-color: #2196F3; color: white; padding: 8px; font-weight: bold;")
+        left_layout.addWidget(self.btn_folder)
+        
         self.image_list = QListWidget()
         self.image_list.itemClicked.connect(self.on_image_selected)
         left_layout.addWidget(QLabel("1. Select Image:"))
@@ -100,8 +105,38 @@ class AnnotatorGUI(QMainWindow):
         layout.addLayout(center_layout, 5)
         layout.addLayout(right_layout, 2)
 
+    def open_folder_dialog(self):
+        """Opens a dialog to select the folder containing the required JSON files."""
+        folder = QFileDialog.getExistingDirectory(self, "Select Data Output Folder (containing sam3_instances)")
+        if folder:
+            self.load_data_from_folder(folder)
+
+    def load_data_from_folder(self, folder_path):
+        """Validates and loads data from the selected folder."""
+        folder = Path(folder_path)
+        manifest_path = folder / "sam3_instances" / "manifest.json"
+        nemotron_path = folder / "materials_full_filtered.json"
+        
+        if not manifest_path.exists() or not nemotron_path.exists():
+            QMessageBox.warning(self, "Missing Files", 
+                f"Could not find required files in:\n{folder}\n\n"
+                f"Expected:\n- sam3_instances/manifest.json\n- materials_full_filtered.json")
+            return
+            
+        self.base_folder = folder
+        self.load_data(manifest_path, nemotron_path)
+
     def load_data(self, manifest_path, nemotron_path):
         try:
+            # Clear previous data
+            self.image_list.clear()
+            self.mask_list.clear()
+            self.manifest_data = []
+            self.nemotron_data = {}
+            self.current_image_data = None
+            self.current_mask_id = None
+            self.image_label.setText("Data loaded. Select an image.")
+
             with open(manifest_path, 'r', encoding='utf-8') as f:
                 self.manifest_data = json.load(f)
                 
@@ -110,10 +145,13 @@ class AnnotatorGUI(QMainWindow):
                 self.nemotron_meta = full_nemotron.get("meta", {})
                 self.nemotron_data = full_nemotron.get("data", {})
 
+            # Populate Image List
             for item in self.manifest_data:
                 img_id = item.get("id", Path(normalize_path(item.get("rgb", item.get("image", "")))).stem)
                 self.image_list.addItem(img_id)
-                
+            
+            self.setWindowTitle(f"AutoPBR Material Annotator - {manifest_path.parent.parent.name}")
+
         except Exception as e:
             QMessageBox.critical(self, "Error Loading Data", f"Failed to load JSON files:\n{e}")
 
@@ -221,13 +259,10 @@ class AnnotatorGUI(QMainWindow):
                 if inst_manifest and inst_manifest.get(f"{cls}_mask"):
                     mask_path = inst_manifest.get(f"{cls}_mask")
                 else:
-                    # Fallback auto-fix path from old file
                     mask_path = target_pred.get("mask")
-                    if mask_path:
-                        #mask_path = mask_path.replace("sam3_instances/", "sam3_instances_v2/")
-                        if bid.startswith("building_"):
-                            num = int(bid.split("_")[1])
-                            mask_path = mask_path.replace(f"building_{num:02d}", f"building_{num:03d}")
+                    if mask_path and bid.startswith("building_"):
+                        num = int(bid.split("_")[1])
+                        mask_path = mask_path.replace(f"building_{num:02d}", f"building_{num:03d}")
                             
                 if cls == "wall": overlay_color = MASK_COLORS["wall"]
                 elif cls == "roof": overlay_color = MASK_COLORS["roof"]
@@ -249,7 +284,7 @@ class AnnotatorGUI(QMainWindow):
         else:
             self.display_image(img_path)
 
-        # Editor
+        # Editor Controls
         self.combo_class.blockSignals(True)
         self.combo_color.blockSignals(True)
         

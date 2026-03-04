@@ -104,6 +104,7 @@ def run_proposed_pipeline(ip_model, depth_estimator, rgb_path, mask_path, materi
         controlnet_conditioning_scale=0.85, strength=0.9, 
     )[0]
     out_path = OUTPUT_DIR / f"{out_prefix}_proposed.jpg"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     guided_result.save(out_path)
     del guided_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
@@ -127,6 +128,7 @@ def run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_img, prompt
         controlnet_conditioning_scale=0.85, strength=0.9, 
     )[0]
     out_path = OUTPUT_DIR / f"{out_prefix}_naive.jpg"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     naive_result.save(out_path)
     del naive_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
@@ -160,6 +162,7 @@ def run_improved_pipeline(ip_model, depth_estimator, rgb_path, mask_path, materi
     final_result = Image.composite(lighting_matched, target_image, feathered_mask)
     
     out_path = OUTPUT_DIR / f"{out_prefix}_improved.jpg"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     final_result.save(out_path)
     del guided_result, lighting_matched, final_result; gc.collect(); torch.cuda.empty_cache()
     return str(out_path)
@@ -186,6 +189,8 @@ def main():
 
     if args.gt_json:
         GT_JSON_PATH = args.gt_json
+
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
     original_dir = os.getcwd()
     try:
@@ -262,10 +267,12 @@ def main():
 
             new_color, new_material = random.choice(valid_combos)
             
-            target_mask = "../" + str(inst_data.get("mask", "")).replace('\\', '/')
-            rgb_path = "../" + str(gt_data[img_id].get("rgb", "")).replace('\\', '/')
+            target_mask = str(inst_data.get("mask", "")).strip().replace('\\', '/')
+            rgb_path = str(gt_data[img_id].get("rgb", "")).strip().replace('\\', '/')
             
-            if not Path(target_mask).exists() or not Path(rgb_path).exists(): continue
+            # 🛡️ THE FIX: Check if string is empty AND ensure it's an actual file
+            if not target_mask or not rgb_path or not Path(target_mask).is_file() or not Path(rgb_path).is_file(): 
+                continue
 
             material_pil_img = get_material_from_bank(new_color, new_material)
             if material_pil_img is None: continue
@@ -299,10 +306,10 @@ def main():
                 "simulated_user_prompt": user_prompt,
                 "gen_prompt": gen_prompt,
                 "mask_path": target_mask,
-                "original_image": f"{OUTPUT_DIR.name}/{out_prefix}_original.jpg",
-                "proposed_image": f"{OUTPUT_DIR.name}/{out_prefix}_proposed.jpg",
-                "improved_image": f"{OUTPUT_DIR.name}/{out_prefix}_improved.jpg",
-                "naive_image": f"{OUTPUT_DIR.name}/{out_prefix}_naive.jpg"
+                "original_image": f"{OUTPUT_DIR}/{out_prefix}_original.jpg",
+                "proposed_image": f"{OUTPUT_DIR}/{out_prefix}_proposed.jpg",
+                "improved_image": f"{OUTPUT_DIR}/{out_prefix}_improved.jpg",
+                "naive_image": f"{OUTPUT_DIR}/{out_prefix}_naive.jpg"
             }
 
             with open(BENCHMARK_JSON_PATH, "w", encoding="utf-8") as f:

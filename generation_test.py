@@ -76,38 +76,92 @@ def parse_nlp_prompt(user_prompt, instances_info):
     api_key = os.getenv("NVIDIA_API_KEY")
     if not api_key: raise SystemExit("❌ Missing NVIDIA_API_KEY env var.")
 
+    valid_ids = [str(k).strip() for k in instances_info.keys()]
+
     proxy_url = os.environ.get('http_proxy') or os.environ.get('HTTP_PROXY') or os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY')
     if proxy_url and not proxy_url.startswith('http'): proxy_url = f"http://{proxy_url}"
-        
+    
     custom_http_client = httpx.Client(proxies=proxy_url, verify=False) if proxy_url else httpx.Client(verify=False)
     client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key, http_client=custom_http_client)
 
-    sys_prompt = f"""You are an intelligent JSON parser for architectural image editing.
-Available buildings in the target image and spatial properties:
-{json.dumps(instances_info, indent=2)}
-Rules:
-- Output ONLY valid JSON.
-- "target_instance" must be the exact key from the available buildings.
-- "target_structure" must be "wall", "roof", "window", or "door".
-- "new_color" should be a simple color name (e.g., "red", "white", "gray").
-- "new_material" should be a simple material name.
+    sys_prompt = f"""You are a machine that outputs ONLY valid JSON. NO markdown format, NO explanations.
+CONTEXT (Available IDs): {json.dumps(valid_ids)}
+PROPERTIES: {json.dumps(instances_info, indent=2)}
+
+TASK: Map User Prompt to a "target_instance" ID from the CONTEXT based on properties like "left", "right", or "area_pixels".
+
+EXAMPLE Output format exactly like this:
+{{
+  "target_instance": "building_05",
+  "target_structure": "wall",
+  "new_color": "red",
+  "new_material": "brick"
+}}
+
 User Prompt: "{user_prompt}"
 """
-    print(f"🧠 Asking AI to interpret prompt: '{user_prompt}'")
-    resp = client.chat.completions.create(
-        model="meta/llama-3.1-8b-instruct", temperature=0.1, max_tokens=200,
-        messages=[{"role": "user", "content": sys_prompt}]
-    )
     
-    raw = resp.choices[0].message.content.strip()
-    match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if not match:
-        print(f"❌ LLM Output Error. Raw response: {raw}")
-        raise ValueError("LLM did not return a valid JSON object.")
+    print(f"🧠 Asking AI to interpret prompt...")
+    parsed = {}
+    try:
+        resp = client.chat.completions.create(
+            model="meta/llama-3.1-8b-instruct", 
+            temperature=0.0,
+            max_tokens=100,
+            messages=[{"role": "user", "content": sys_prompt}]
+        )
+        raw = resp.choices[0].message.content.strip()
+        # Clean markdown code blocks if the LLM ignores instructions
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group(0))
+    except Exception as e:
+        print(f"⚠️ LLM parsing error: {e}")
+    
+    llm_id = str(parsed.get("target_instance", "")).strip()
+
+    # --- SMARTER FALLBACK LOGIC ---
+    if llm_id not in valid_ids:
+        print(f"⚠️ LLM Parsing Issue. Raw ID: '{llm_id}'.")
+        print("   -> Triggering smart fallback based on user prompt keywords...")
         
-    clean_json_string = match.group(0)
-    parsed = json.loads(clean_json_string)
-    print(f"✅ AI Parsed Intent: {json.dumps(parsed, indent=2)}")
+        if instances_info:
+            prompt_lower = user_prompt.lower().replace(",", "")
+            
+            # 1. Filter by position
+            candidates = instances_info
+            if "right" in prompt_lower:
+                candidates = {k: v for k, v in instances_info.items() if v.get("horizontal_position") == "right"}
+            elif "left" in prompt_lower:
+                candidates = {k: v for k, v in instances_info.items() if v.get("horizontal_position") == "left"}
+            elif "center" in prompt_lower:
+                candidates = {k: v for k, v in instances_info.items() if v.get("horizontal_position") == "center"}
+            
+            # If position filter empties the list, revert to all instances
+            if not candidates: 
+                candidates = instances_info
+
+            # 2. Select by size
+            if "smallest" in prompt_lower:
+                fallback_id = min(candidates, key=lambda k: candidates[k]['area_pixels'])
+            else: # Default to biggest
+                fallback_id = max(candidates, key=lambda k: candidates[k]['area_pixels'])
+            
+            parsed["target_instance"] = fallback_id
+            
+            # 3. Extract material and color
+            words = prompt_lower.split()
+            materials = ["brick", "concrete", "wood", "stone", "plaster", "metal", "glass", "painted"]
+            colors = ["red", "white", "brown", "gray", "black", "blue", "green", "yellow"]
+            
+            parsed["new_material"] = next((w for w in words if w in materials), "original")
+            parsed["new_color"] = next((w for w in words if w in colors), "original")
+            parsed["target_structure"] = "wall" 
+    else:
+        parsed["target_instance"] = llm_id
+
+    print(f"✅ Final Parsed Intent: {json.dumps(parsed, indent=2)}")
     return parsed
 
 # ==========================================
@@ -276,56 +330,71 @@ def main():
     if args.json:
         GT_PATH = args.json
 
-    original_dir = os.getcwd()
-    try:
-        OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
-        DEBUG_DIR.mkdir(exist_ok=True, parents=True)
-        device = "cuda"
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+    DEBUG_DIR.mkdir(exist_ok=True, parents=True)
+    device = "cuda"
 
-        with open(GT_PATH, 'r', encoding='utf-8') as f:
-            gt_data = json.load(f).get("data", {})
+    with open(GT_PATH, 'r', encoding='utf-8') as f:
+        gt_data = json.load(f).get("data", {})
 
-        TARGET_IMAGE_ID = next(iter(gt_data)) #"1003317145127470"
-        if TARGET_IMAGE_ID not in gt_data: return
+    print("\n⏳ Loading Models...")
+    depth_estimator = pipeline("depth-estimation", model="Intel/dpt-hybrid-midas", device=0)
+    controlnet = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0", variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(device)
+    pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-xl-base-1.0", controlnet=controlnet, use_safetensors=True, torch_dtype=torch.float16, add_watermarker=False,
+    ).to(device)
+    pipe.unet = register_cross_attention_hook(pipe.unet)
+    ip_model = IPAdapterXL(pipe, "models/image_encoder", "sdxl_models/ip-adapter_sdxl_vit-h.bin", device)
 
-        spatial_info = get_spatial_info(gt_data, TARGET_IMAGE_ID)
-        parsed_intent = parse_nlp_prompt(USER_PROMPT, spatial_info)
-        
-        target_bid = parsed_intent.get("target_instance")
-        target_struct = parsed_intent.get("target_structure", "wall")
-        target_color = parsed_intent.get("new_color")
-        target_material = parsed_intent.get("new_material")
+    for img_id in gt_data.keys():
+        try:
+            spatial_info = get_spatial_info(gt_data, img_id)
+            if not spatial_info:
+                continue  # Skip if no instances
 
-        inst_data = gt_data[TARGET_IMAGE_ID]["instances"][target_bid][target_struct]
-        target_mask = inst_data["mask"].replace('\\', '/')
-        rgb_path = gt_data[TARGET_IMAGE_ID]["rgb"].replace('\\', '/')
-
-        print(f"\n🔍 Retrieving reference image of '{target_color} {target_material}' from Material Bank...")
-        material_pil_img, safe_color = get_material_from_bank(target_color, target_material)
-        if material_pil_img is None: return
-
-        print("\n⏳ Loading Models...")
-        depth_estimator = pipeline("depth-estimation", model="Intel/dpt-hybrid-midas", device=0)
-        controlnet = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0", variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(device)
-        pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0", controlnet=controlnet, use_safetensors=True, torch_dtype=torch.float16, add_watermarker=False,
-        ).to(device)
-        pipe.unet = register_cross_attention_hook(pipe.unet)
-        ip_model = IPAdapterXL(pipe, "models/image_encoder", "sdxl_models/ip-adapter_sdxl_vit-h.bin", device)
-        
-        display_color = "" if safe_color == "original" else safe_color
-        gen_prompt = f"a highly detailed building facade made of {display_color} {target_material}, featuring architectural outlines".replace("  ", " ").strip()
-        out_prefix = f"{TARGET_IMAGE_ID}_{target_bid}"
-        
-        run_naive_pipeline(ip_model, depth_estimator, rgb_path, material_pil_img, gen_prompt, out_prefix)
-        run_proposed_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, gen_prompt, out_prefix)
-        run_improved_pipeline(ip_model, depth_estimator, rgb_path, target_mask, material_pil_img, gen_prompt, out_prefix)
+            print(f"🖼️ Attempting Image ID: {img_id}...")
+            parsed_intent = parse_nlp_prompt(USER_PROMPT, spatial_info)
+            if not parsed_intent:
+                continue
                 
-        print(f"\n✅ Done! Check the {OUTPUT_DIR.name} folder.")
-        print(f"   Note: Intermediate debug images saved to {DEBUG_DIR.name}/")
-        
-    finally:
-        os.chdir(original_dir)
+            target_bid = parsed_intent.get("target_instance")
+            target_struct = parsed_intent.get("target_structure", "wall")
+            
+            # Retrieve Mask Path
+            inst_block = gt_data[img_id]["instances"].get(target_bid, {})
+            mask_path = inst_block.get(target_struct, {}).get("mask") or inst_block.get("mask")
+            if not mask_path:
+                print(f"⚠️ Missing mask for {img_id}. Skipping.")
+                continue
+                
+            rgb_path = gt_data[img_id].get("rgb")
+            
+            # Prepare Material
+            t_mat = parsed_intent.get("new_material", "brick")
+            t_col = parsed_intent.get("new_color", "brown")
+            mat_img, safe_col = get_material_from_bank(t_col, t_mat)
+            if not mat_img:
+                print(f"⚠️ Material {t_col} {t_mat} not found. Skipping.")
+                continue
+
+            print(f"✅ Processing {img_id} -> {target_bid}...")
+            
+            # Run Generation
+            gen_prompt = f"a high quality building facade made of {safe_col} {t_mat}"
+            prefix = f"{img_id}_{target_bid}"
+            
+            run_naive_pipeline(ip_model, depth_estimator, rgb_path, mat_img, gen_prompt, prefix)
+            run_proposed_pipeline(ip_model, depth_estimator, rgb_path, mask_path, mat_img, gen_prompt, prefix)
+            run_improved_pipeline(ip_model, depth_estimator, rgb_path, mask_path, mat_img, gen_prompt, prefix)
+            
+            print(f"\n✅ Success! Generation Complete. Results in {OUTPUT_DIR}/")
+            
+            # STOP IMMEDIATELY AFTER THE FIRST SUCCESSFUL IMAGE
+            break 
+            
+        except Exception as e:
+            print(f"⚠️ Error on {img_id}: {e}. Trying next image...")
+            continue
 
 if __name__ == "__main__":
     main()

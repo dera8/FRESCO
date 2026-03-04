@@ -86,6 +86,23 @@ This file manages all parameters, including SAM3 thresholds, Nemotron prompts, a
 ## 🚀 Usage
 You can use the notebook `run_pipeline.ipynb` to execute step-by-step the whole FRESCO workflow. In alternative, you can launch utility scripts singularly to execute specific tasks.
 
+### Buildings and Roads Segmentation
+
+```bash
+python sam3_v3.py --out-dir data_output/sam3_instances --score-thr 0.6 --mask-thr 0.5 --images-dir photos_canary --pattern '*.jpg'
+```
+
+### Instances and Baseline Material Recognition
+Follow the procedure in the notebook to adopt properly `nemotron_building_priors.py` and `nemotron_fullimage.py` for instances and baseline material recognition respectively. 
+
+### GUI Annotator for Manual Validation and Ground Truth Generation
+```bash
+python gui_annotator.py
+```
+
+### Recognition Evaluation
+Follow the procedure in the notebook to adopt properly `evaluate_detection.py` for recognition evaluation.
+
 ### Natural Language Editing (Single Image)
 To perform a single, language-driven edit on a specific image (e.g., *"Change the wall of the biggest building to red brick"*), run the evaluator script. This script includes the **architectural plausibility guardrails**.
 
