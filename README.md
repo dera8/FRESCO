@@ -6,7 +6,7 @@
 
 > **Note:** This repository contains the official implementation of the **FRESCO** framework, developed for submission to the **European Conference on Computer Vision (ECCV)**.
 
-![FRESCO Architecture](fresco_overview.jpg)
+![FRESCO Architecture](fresco_overview_v4.jpg)
 *(Architecture diagram)*
 
 ## 📖 Overview
